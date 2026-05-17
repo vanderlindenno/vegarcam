@@ -1,0 +1,48 @@
+name: Update Netatmo Data
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"  # elke 15 min
+  workflow_dispatch:
+
+jobs:
+  update-weather:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Get Netatmo data
+        run: |
+          curl -X POST https://api.netatmo.com/oauth2/token \
+            -d "grant_type=password" \
+            -d "client_id=${{ secrets.NETATMO_CLIENT_ID }}" \
+            -d "client_secret=${{ secrets.NETATMO_CLIENT_SECRET }}" \
+            -d "username=${{ secrets.NETATMO_USERNAME }}" \
+            -d "password=${{ secrets.NETATMO_PASSWORD }}" \
+            -d "scope=read_station" > token.json
+
+          ACCESS_TOKEN=$(jq -r .access_token token.json)
+
+          curl -H "Authorization: Bearer $ACCESS_TOKEN" \
+            https://api.netatmo.com/api/getstationsdata > data.json
+
+      - name: Extract data
+        run: |
+          TEMP=$(jq '.body.devices[0].modules[0].dashboard_data.Temperature' data.json)
+          HUM=$(jq '.body.devices[0].modules[0].dashboard_data.Humidity' data.json)
+
+          echo "{
+            \"temperature\": $TEMP,
+            \"humidity\": $HUM,
+            \"time\": \"$(date)\"
+          }" > weather.json
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add weather.json
+          git commit -m "Update weather data"
+          git push
