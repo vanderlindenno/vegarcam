@@ -2,7 +2,7 @@ name: Update Netatmo Data
 
 on:
   schedule:
-    - cron: "*/15 * * * *"  # elke 15 min
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 jobs:
