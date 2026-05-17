@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mijn Weerstation</title>
+</head>
+<body>
+  <h1>🌦️ Lokale Netatmo Weerdata</h1>
+
+  <div id="weather">Laden...</div>
+
+  <script>
+    async function loadWeather() {
+      const res = await fetch("weather.json");
+      const data = await res.json();
+
+      document.getElementById("weather").innerHTML = `
+        🌡️ ${data.temperature} °C <br>
+        💧 ${data.humidity} % <br>
+        ⏱️ Laatste update: ${data.time}
+      `;
+    }
+
+    loadWeather();
+  </script>
+</body>
+</html>
