@@ -1,24 +1,26 @@
 name: Update Weather Data
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: "*/10 * * * *"   # elke 10 minuten
-  workflow_dispatch:         # handmatig starten mogelijk
+    - cron: "*/10 * * * *"
 
 jobs:
   update-weather:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
       - name: Install jq
-        run: sudo apt-get install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Get Netatmo token
+      - name: Get Netatmo token (WITH DEBUG)
         run: |
-          curl -X POST https://api.netatmo.com/oauth2/token \
+          echo "Requesting token..."
+
+          curl -s -X POST https://api.netatmo.com/oauth2/token \
             -d "grant_type=password" \
             -d "client_id=${{ secrets.NETATMO_CLIENT_ID }}" \
             -d "client_secret=${{ secrets.NETATMO_CLIENT_SECRET }}" \
@@ -26,16 +28,33 @@ jobs:
             -d "password=${{ secrets.NETATMO_PASSWORD }}" \
             -d "scope=read_station" > token.json
 
-      - name: Extract access token
-        id: token
+          echo "==== TOKEN RESPONSE ===="
+          cat token.json
+
+          # check of JSON geldig is
+          jq . token.json || (echo "❌ TOKEN JSON ONGELDIG" && exit 1)
+
+      - name: Extract token
         run: |
           ACCESS_TOKEN=$(jq -r .access_token token.json)
+
+          if [ "$ACCESS_TOKEN" = "null" ] || [ -z "$ACCESS_TOKEN" ]; then
+            echo "❌ GEEN GELDIGE TOKEN!"
+            exit 1
+          fi
+
+          echo "TOKEN OK"
           echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
 
-      - name: Get station data
+      - name: Get weather data
         run: |
-          curl -H "Authorization: Bearer $ACCESS_TOKEN" \
+          curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
             https://api.netatmo.com/api/getstationsdata > data.json
+
+          echo "==== DATA RESPONSE ===="
+          cat data.json
+
+          jq . data.json || (echo "❌ DATA JSON ONGELDIG" && exit 1)
 
       - name: Create weather.json
         run: |
@@ -43,16 +62,28 @@ jobs:
           HUM=$(jq '.body.devices[0].dashboard_data.Humidity' data.json)
           TIME=$(date '+%Y-%m-%d %H:%M:%S')
 
+          echo "Temperature: $TEMP"
+          echo "Humidity: $HUM"
+
+          if [ "$TEMP" = "null" ] || [ "$HUM" = "null" ]; then
+            echo "❌ DATA STRUCTUUR FOUT"
+            exit 1
+          fi
+
           echo "{
             \"temperature\": $TEMP,
             \"humidity\": $HUM,
             \"time\": \"$TIME\"
           }" > weather.json
 
-      - name: Commit and push if changed
+          cat weather.json
+
+      - name: Commit & push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
+
           git add weather.json
-          git diff --quiet && git diff --staged --quiet || git commit -m "Auto update weather data"
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update weather"
           git push
+``
