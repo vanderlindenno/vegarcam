@@ -1,7 +1,39 @@
+name: Update Weather
 
-- name: Get weather data
-  run: |
-    curl -s -H "Authorization: Bearer ${{ secrets.NETATMO_TOKEN }}" \
-      https://api.netatmo.com/api/getstationsdata > data.json
+on:
+  workflow_dispatch:
 
-    cat data.json
+jobs:
+  weather:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Get Netatmo data
+        run: |
+          echo "Calling Netatmo API..."
+
+          curl -s -H "Authorization: Bearer ${{ secrets.NETATMO_TOKEN }}" \
+            https://api.netatmo.com/api/getstationsdata > data.json
+
+          echo "=== RESPONSE ==="
+          cat data.json
+
+          jq . data.json || exit 1
+
+      - name: Create weather.json
+        run: |
+          TEMP=$(jq '.body.devices[0].dashboard_data.Temperature' data.json)
+          HUM=$(jq '.body.devices[0].dashboard_data.Humidity' data.json)
+
+          echo "TEMP=$TEMP"
+          echo "HUM=$HUM"
+
+          echo "{
+            \"temperature\": $TEMP,
+            \"humidity\": $HUM,
