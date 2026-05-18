@@ -2,38 +2,59 @@ name: Update Weather
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "*/10 * * * *"
 
 jobs:
   weather:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
 
       - name: Get Netatmo data
         run: |
           echo "Calling Netatmo API..."
 
-          curl -s -H "Authorization: Bearer ${{ secrets.NETATMO_TOKEN }}" \
-            https://api.netatmo.com/api/getstationsdata > data.json
+          curl -s -k -H "Authorization: Bearer ${{ secrets.NETATMO_TOKEN }}" \
+          https://api.netatmo.com/api/getstationsdata > data.json
 
-          echo "=== RESPONSE ==="
+          echo "=== API RESPONSE ==="
           cat data.json
 
-          jq . data.json || exit 1
-
-      - name: Create weather.json
+      - name: Extract and create weather.json
         run: |
-          TEMP=$(jq '.body.devices[0].dashboard_data.Temperature' data.json)
-          HUM=$(jq '.body.devices[0].dashboard_data.Humidity' data.json)
+          TEMP=$(jq -r '.body.devices[0].dashboard_data.Temperature' data.json)
+          HUM=$(jq -r '.body.devices[0].dashboard_data.Humidity' data.json)
 
-          echo "TEMP=$TEMP"
-          echo "HUM=$HUM"
+          if [ "$TEMP" = "null" ] || [ "$HUM" = "null" ]; then
+            echo "❌ Data niet gevonden — check API response hierboven"
+            exit 1
+          fi
+
+          echo "Temperature: $TEMP"
+          echo "Humidity: $HUM"
 
           echo "{
             \"temperature\": $TEMP,
             \"humidity\": $HUM,
+            \"time\": \"$(date '+%Y-%m-%d %H:%M')\"
+          }" > weather.json
+
+          echo "=== WEATHER.JSON ==="
+          cat weather.json
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+          git add weather.json
+          git commit -m "Update weather data" || echo "No changes"
+          git push
