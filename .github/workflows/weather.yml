@@ -1,25 +1,58 @@
-- name: Get Netatmo data (debug)
-  run: |
-    echo "Start token request"
+name: Update Weather Data
 
-    curl -X POST https://api.netatmo.com/oauth2/token \
-      -d "grant_type=password" \
-      -d "client_id=${{ secrets.NETATMO_CLIENT_ID }}" \
-      -d "client_secret=${{ secrets.NETATMO_CLIENT_SECRET }}" \
-      -d "username=${{ secrets.NETATMO_USERNAME }}" \
-      -d "password=${{ secrets.NETATMO_PASSWORD }}" \
-      -d "scope=read_station" > token.json
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # elke 10 minuten
+  workflow_dispatch:         # handmatig starten mogelijk
 
-    echo "Token response:"
-    cat token.json
+jobs:
+  update-weather:
+    runs-on: ubuntu-latest
 
-    ACCESS_TOKEN=$(jq -r .access_token token.json)
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    echo "Access token is:"
-    echo $ACCESS_TOKEN
+      - name: Install jq
+        run: sudo apt-get install jq
 
-    curl -H "Authorization: Bearer $ACCESS_TOKEN" \
-      https://api.netatmo.com/api/getstationsdata > data.json
+      - name: Get Netatmo token
+        run: |
+          curl -X POST https://api.netatmo.com/oauth2/token \
+            -d "grant_type=password" \
+            -d "client_id=${{ secrets.NETATMO_CLIENT_ID }}" \
+            -d "client_secret=${{ secrets.NETATMO_CLIENT_SECRET }}" \
+            -d "username=${{ secrets.NETATMO_USERNAME }}" \
+            -d "password=${{ secrets.NETATMO_PASSWORD }}" \
+            -d "scope=read_station" > token.json
 
-    echo "Data response:"
-    cat data.json
+      - name: Extract access token
+        id: token
+        run: |
+          ACCESS_TOKEN=$(jq -r .access_token token.json)
+          echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
+
+      - name: Get station data
+        run: |
+          curl -H "Authorization: Bearer $ACCESS_TOKEN" \
+            https://api.netatmo.com/api/getstationsdata > data.json
+
+      - name: Create weather.json
+        run: |
+          TEMP=$(jq '.body.devices[0].dashboard_data.Temperature' data.json)
+          HUM=$(jq '.body.devices[0].dashboard_data.Humidity' data.json)
+          TIME=$(date '+%Y-%m-%d %H:%M:%S')
+
+          echo "{
+            \"temperature\": $TEMP,
+            \"humidity\": $HUM,
+            \"time\": \"$TIME\"
+          }" > weather.json
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add weather.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto update weather data"
+          git push
