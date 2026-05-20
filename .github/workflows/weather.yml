@@ -10,13 +10,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      # ✅ Netatmo token
+      # ✅ TOKEN
       - name: Get Netatmo token
         run: |
           curl -s -X POST https://api.netatmo.com/oauth2/token \
@@ -27,61 +26,40 @@ jobs:
             > token.json
 
           ACCESS_TOKEN=$(jq -r '.access_token' token.json)
-
-          if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "null" ]; then
-            echo "❌ Token error"
-            exit 1
-          fi
-
           echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
 
-      # ✅ Utendørs sensor (correct)
-      - name: Get Netatmo data
+      # ✅ UTENDØRS
+      - name: Get Netatmo
         run: |
           curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
           https://api.netatmo.com/api/getstationsdata > data.json
 
-          echo "Modules:"
-          jq '.body.devices[].modules[].module_name' data.json
-
-          TEMP=$(jq -r '
-          .body.devices[].modules[]
-          | select(.module_name == "Utendørs")
-          | .dashboard_data.Temperature' data.json | head -n 1)
-
-          HUM=$(jq -r '
-          .body.devices[].modules[]
-          | select(.module_name == "Utendørs")
-          | .dashboard_data.Humidity' data.json | head -n 1)
-
-          if [ -z "$TEMP" ] || [ "$TEMP" = "null" ]; then
-            echo "❌ Utendørs niet gevonden"
-            exit 1
-          fi
+          TEMP=$(jq -r '.body.devices[].modules[] | select(.module_name=="Utendørs") | .dashboard_data.Temperature' data.json)
+          HUM=$(jq -r '.body.devices[].modules[] | select(.module_name=="Utendørs") | .dashboard_data.Humidity' data.json)
 
           echo "TEMP=$TEMP" >> $GITHUB_ENV
           echo "HUM=$HUM" >> $GITHUB_ENV
 
-      # ✅ 3 dagen forecast (vanaf morgen!)
+      # ✅ 3 DAGEN PRO DATA
       - name: Get forecast
         run: |
           curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=58.795&lon=8.79" \
-          -H "User-Agent: github-weather-app" > forecast.json
+          -H "User-Agent: weather-app" > forecast.json
 
           jq '
           .properties.timeseries
           | map(select(.time | contains("12:00:00")))[1:4]
           | map({
               time: .time,
-              temp: .data.instant.details.air_temperature
+              temp: .data.instant.details.air_temperature,
+              wind: .data.instant.details.wind_speed,
+              rain: (.data.next_1_hours.details.precipitation_amount // 0),
+              uv: (.data.instant.details.ultraviolet_index_clear_sky // 0)
           })
           ' forecast.json > forecast_out.json
 
-          echo "Forecast:"
-          cat forecast_out.json
-
-      # ✅ JSON maken
-      - name: Create weather.json
+      # ✅ JSON
+      - name: Create json
         run: |
           echo "{
             \"temperature\": $TEMP,
@@ -90,16 +68,11 @@ jobs:
             \"time\": \"$(date -u '+%Y-%m-%d %H:%M:%S')\"
           }" > weather.json
 
-          echo "Result:"
-          cat weather.json
-
-      # ✅ Push
-      - name: Commit & push
+      # ✅ PUSH
+      - name: Commit
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-
           git add weather.json
           git commit -m "Update weather" || echo "No changes"
           git push
-``
