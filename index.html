@@ -19,12 +19,9 @@ body {
   padding:20px;
 }
 
-/* HEADER */
-h2 {
-  margin-bottom:20px;
-}
+h2 { margin-bottom:20px; }
 
-/* ✅ CURRENT */
+/* CURRENT */
 .current {
   background:#f4f6fa;
   border-radius:30px;
@@ -35,83 +32,49 @@ h2 {
   margin-bottom:30px;
 }
 
-.current img {
-  width:60px;
-}
+.current img { width:60px; }
+.temp { font-size:42px; font-weight:600; }
 
-.temp {
-  font-size:42px;
-  font-weight:600;
-}
-
-/* ✅ FORECAST */
+/* FORECAST */
 .days {
   display:flex;
   gap:20px;
 }
 
-/* kaart */
 .day {
   flex:1;
   background:#f4f6fa;
   border-radius:30px;
   padding:20px;
   text-align:center;
-  box-shadow:0 4px 15px rgba(0,0,0,0.06);
 }
 
-/* titel */
-.title {
-  font-size:18px;
-  margin-bottom:10px;
-  text-transform:capitalize;
-}
-
-.day:first-child .title {
-  color:#f97316;
-  font-weight:600;
-}
-
-/* icon */
 .big-icon {
   width:60px;
-  height:60px;
   margin:10px 0;
 }
 
-/* temp */
 .max {
   font-size:32px;
   font-weight:600;
 }
 
 .min {
-  font-size:18px;
   color:#9aa3b2;
-  margin-bottom:15px;
+  margin-bottom:10px;
 }
 
-/* rows */
 .row {
-  display:flex;
-  justify-content:center;
-  gap:6px;
   font-size:14px;
   margin:4px 0;
 }
 
-/* kleine iconen */
-.small-icon {
-  width:18px;
-}
-
-/* mobiel */
+/* mobile */
 @media (max-width:700px) {
-  .days {
-    flex-direction:column;
-  }
+  .days { flex-direction:column; }
 }
 </style>
+
 </head>
 
 <body>
@@ -120,69 +83,84 @@ h2 {
 
 <h2>📍 Vegår</h2>
 
-<!-- ✅ CURRENT -->
 <div id="current" class="current">Laster...</div>
 
-<!-- ✅ FORECAST -->
 <div id="forecast" class="days"></div>
 
 </div>
 
 <script>
-function icon(icon) {
-  return `https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${icon || "cloudy"}.svg`;
+function icon(i) {
+  return `https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${i || "cloudy"}.svg`;
 }
 
 async function load() {
 
-  const res = await fetch("weather.json?x=" + Date.now());
-  const data = await res.json();
+  try {
 
-  /* ✅ CURRENT */
-  const currentIcon = data.forecast[0]?.icon || "cloudy";
+    const res = await fetch("weather.json?v=" + Date.now());
 
-  document.getElementById("current").innerHTML = `
-    <img src="${icon(currentIcon)}" onerror="this.src='${icon('cloudy')}'a.temperature ? Math.round(data.temperature) + "°C" : "—"}
-      </div>
-      <div>💧 ${data.humidity ? data.humidity + "%" : "—"}</div>
-    </div>
-  `;
+    if (!res.ok) throw new Error("Ingen data enda");
 
-  /* ✅ FORECAST */
-  const f = document.getElementById("forecast");
-  f.innerHTML = "";
+    const data = await res.json();
 
-  data.forecast.forEach(d => {
+    if (!data.forecast || data.forecast.length === 0) {
+      throw new Error("Tom data");
+    }
 
-    const dag = new Date(d.date)
-      .toLocaleDateString("no-NO",{weekday:"long"});
-
-    f.innerHTML += `
-      <div class="day">
-
-        <div class="title">${dag}</div>
-
-        <img src="${icon(d.icon)}" class="big-icon"
-             onerror="this.src='${icon('cloudy')in">${Math.round(d.min)}°C</div>
-
-        <div class="row">
-          <img src="${icon('rain')}" class="small-icon      </div>
-
-        <div class="row">
-          <img src="${icon('wind')}" class="smallm/s
+    /* ✅ CURRENT */
+    document.getElementById("current").innerHTML = `
+      <img src="${icon(data.forecast[0].icon)}"
+           onerror="this.src='${icon("cloudy.temperature ? Math.round(data.temperature) + "°C" : "--"}
         </div>
-
-        <div class="row">
-          <img src="${icon('clearsky_day')}" class="small      <div class="row">
-          UV ${d.uv}
-        </div>
-
+        <div>💧 ${data.humidity ? data.humidity + "%" : "--"}</div>
       </div>
     `;
-  });
+
+    /* ✅ FORECAST */
+    const f = document.getElementById("forecast");
+    f.innerHTML = "";
+
+    data.forecast.forEach(d => {
+
+      const dag = new Date(d.date)
+        .toLocaleDateString("no-NO",{weekday:"long"});
+
+      f.innerHTML += `
+        <div class="day">
+
+          <div>${dag}</div>
+
+          <img src="${icon(d.icon)}"
+               class="big-icon"
+               onerror="this.src='${icon("cloudy")und(d.min)}°C</div>
+
+          <div class="row">🌧️ ${d.rain.toFixed(1)} mm</div>
+          <div class="row">🌬️ ${d.wind.toFixed(1)} m/s</div>
+          <div class="row">☀️ ${d.sun} h</div>
+          <div class="row">UV ${d.uv}</div>
+
+        </div>
+      `;
+    });
+
+  } catch (e) {
+
+    // ✅ NIET blijven hangen!
+    document.getElementById("current").innerHTML = `
+      <div>Venter på værdata...</div>
+    `;
+
+    document.getElementById("forecast").innerHTML = "";
+
+    console.warn("Retry later", e.message);
+  }
+
 }
 
+/* ✅ retry elke 10 sec */
 load();
+setInterval(load, 10000);
 </script>
 
 </body>
