@@ -15,35 +15,59 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      # ✅ Netatmo data ophalen
+      # ✅ 1. NIEUW ACCESS TOKEN HALEN (BELANGRIJK)
+      - name: Get Netatmo token
+        run: |
+          echo "Getting new access token..."
+
+          curl -s -X POST https://api.netatmo.com/oauth2/token \
+          -d "grant_type=refresh_token" \
+          -d "refresh_token=${{ secrets.NETATMO_REFRESH_TOKEN }}" \
+          -d "client_id=${{ secrets.NETATMO_CLIENT_ID }}" \
+          -d "client_secret=${{ secrets.NETATMO_CLIENT_SECRET }}" \
+          > token.json
+
+          cat token.json
+
+          ACCESS_TOKEN=$(jq -r '.access_token' token.json)
+
+          if [ "$ACCESS_TOKEN" = "null" ] || [ -z "$ACCESS_TOKEN" ]; then
+            echo "❌ Token ophalen mislukt"
+            exit 1
+          fi
+
+          echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
+
+
+      # ✅ 2. Netatmo data ophalen
       - name: Get Netatmo data
         run: |
-          echo "Calling Netatmo..."
-
-          curl -s -H "Authorization: Bearer ${{ secrets.NETATMO_TOKEN }}" \
+          curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
           https://api.netatmo.com/api/getstationsdata > data.json
 
-          echo "=== RAW ==="
+          echo "=== DATA ==="
           cat data.json
 
-      # ✅ Data automatisch vinden (werkt altijd)
+
+      # ✅ 3. Data automatisch vinden
       - name: Extract weather
         run: |
           TEMP=$(jq -r '.. | objects | select(has("Temperature")) | .Temperature' data.json | head -n 1)
           HUM=$(jq -r '.. | objects | select(has("Humidity")) | .Humidity' data.json | head -n 1)
 
-          echo "TEMP=$TEMP"
-          echo "HUM=$HUM"
+          echo "TEMP = $TEMP"
+          echo "HUM = $HUM"
 
-          if [ -z "$TEMP" ] || [ "$TEMP" = "null" ]; then
-            echo "❌ Token werkt niet of geen data"
+          if [ "$TEMP" = "null" ] || [ -z "$TEMP" ]; then
+            echo "❌ Geen temperatuur gevonden"
             exit 1
           fi
 
           echo "TEMP=$TEMP" >> $GITHUB_ENV
           echo "HUM=$HUM" >> $GITHUB_ENV
 
-      # ✅ Forecast ophalen
+
+      # ✅ 4. Forecast ophalen
       - name: Get forecast
         run: |
           curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=52.37&lon=4.90" \
@@ -55,7 +79,8 @@ jobs:
           echo "F_TEMP=$F_TEMP" >> $GITHUB_ENV
           echo "F_TIME=$F_TIME" >> $GITHUB_ENV
 
-      # ✅ JSON maken
+
+      # ✅ 5. JSON maken
       - name: Create weather.json
         run: |
           echo "{
@@ -68,12 +93,13 @@ jobs:
 
           cat weather.json
 
-      # ✅ Push
-      - name: Commit
+
+      # ✅ 6. Commit + push
+      - name: Commit and push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
 
           git add weather.json
-          git commit -m "Update weather" || echo "No changes"
+          git commit -m "Update weather data" || echo "No changes"
           git push
