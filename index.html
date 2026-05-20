@@ -8,7 +8,7 @@
 body {
   margin: 0;
   font-family: -apple-system, sans-serif;
-  background: linear-gradient(180deg, #1e3c72, #2a5298, #4facfe);
+  background: linear-gradient(180deg,#1e3c72,#2a5298,#4facfe);
   color: white;
 }
 
@@ -23,25 +23,24 @@ body {
   border-radius: 20px;
   padding: 20px;
   margin-bottom: 20px;
-  backdrop-filter: blur(12px);
 }
 
 .days {
   display: flex;
   gap: 10px;
-  overflow-x: auto;
 }
 
 .day {
-  min-width: 110px;
-  background: rgba(255,255,255,0.15);
-  padding: 10px;
+  flex: 1;
+  background: rgba(255,255,255,0.2);
   border-radius: 15px;
   text-align: center;
+  padding: 12px;
 }
 
-.icon { font-size: 28px; }
-.temp { font-size: 40px; }
+.big { font-size: 42px; }
+.icon { font-size: 30px; }
+.small { font-size: 12px; opacity: 0.8; }
 </style>
 </head>
 
@@ -54,7 +53,7 @@ body {
 <div class="card" id="current">Laster...</div>
 
 <div class="card">
-  <div>5 DAGERS VARSEL</div>
+  <b>3 DAGERS VARSEL</b>
   <div class="days" id="forecast"></div>
 </div>
 
@@ -69,42 +68,42 @@ function icon(t){
 }
 
 async function load(){
- const res = await fetch("weather.json");
- const data = await res.json();
+  const res = await fetch("weather.json");
+  const data = await res.json();
 
- // ✅ Correcte tijd fix
- const time = new Date(data.time.replace(" ","T")+"Z")
-   .toLocaleString("no-NO",{timeZone:"Europe/Oslo"});
+  // ✅ juiste tijd
+  const time = new Date(data.time.replace(" ","T")+"Z")
+    .toLocaleString("no-NO",{timeZone:"Europe/Oslo"});
 
- // ✅ NU
- document.getElementById("current").innerHTML = `
-   <div>NÅ</div>
-   <div class="icon">${icon(data.temperature)}</div>
-   <div class="temp">${data.temperature}°C</div>
-   💧 ${data.humidity}%<br>
-   <small>${time}</small>
- `;
+  // ✅ NU
+  document.getElementById("current").innerHTML = `
+    <div>NÅ</div>
+    <div class="icon">${icon(data.temperature)}</div>
+    <div class="big">${data.temperature}°C</div>
+    💧 ${data.humidity}%<br>
+    <div class="small">${time}</div>
+  `;
 
- // ✅ FORECAST
- const f = document.getElementById("forecast");
- f.innerHTML = "";
+  // ✅ 3 dagen
+  const f = document.getElementById("forecast");
+  f.innerHTML = "";
 
- data.forecast.forEach(d => {
-   const dt = new Date(d.time);
+  data.forecast.forEach(d => {
+    const dt = new Date(d.time);
 
-   const dag = dt.toLocaleDateString("no-NO", {
-     weekday: "long",
-     timeZone: "Europe/Oslo"
-   });
+    const dag = dt.toLocaleDateString("no-NO", {
+      weekday: "short",
+      timeZone: "Europe/Oslo"
+    });
 
-   f.innerHTML += `
-     <div class="day">
-       <div>${dag}</div>
-       <div class="icon">${icon(d.temp)}</div>
-       <div>${d.temp}°C</div>
-     </div>
-   `;
- });
+    f.innerHTML += `
+      <div class="day">
+        <div>${dag}</div>
+        <div class="icon">${icon(d.temp)}</div>
+        <div>${d.temp}°C</div>
+      </div>
+    `;
+  });
 }
 
 load();
@@ -112,4 +111,3 @@ load();
 
 </body>
 </html>
-``
