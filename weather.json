@@ -1,6 +1,6 @@
 {
-  "temperature": 11.6,
-  "humidity": 89,
+  "temperature": 0,
+  "humidity": 0,
   "forecast": [
   {
     "date": "2026-05-21",
@@ -30,8 +30,7 @@
     "wind": 2.65,
     "uv": 0,
     "sun": 6,
-    "icon": "rain"
+    "icon": "cloudy"
   }
-],
-  "time": "2026-05-20 18:09:20"
+]
 }
