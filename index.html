@@ -6,10 +6,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body { margin:0; font-family:-apple-system; background:#e9edf3; color:#4a5568; }
-.container { max-width:900px; margin:auto; padding:15px; }
+body {
+  margin:0;
+  font-family:-apple-system;
+  background:#e9edf3;
+  color:#4a5568;
+}
+
+.container {
+  max-width:900px;
+  margin:auto;
+  padding:15px;
+}
+
 h2 { margin-bottom:15px; }
 
+/* CURRENT */
 .current {
   background:#f4f6fa;
   border-radius:25px;
@@ -21,9 +33,17 @@ h2 { margin-bottom:15px; }
 }
 
 .current img { width:60px; }
-.temp { font-size:42px; font-weight:bold; }
 
-.days { display:flex; gap:15px; }
+.temp {
+  font-size:42px;
+  font-weight:bold;
+}
+
+/* FORECAST */
+.days {
+  display:flex;
+  gap:15px;
+}
 
 .day {
   flex:1;
@@ -32,7 +52,10 @@ h2 { margin-bottom:15px; }
   padding:20px;
 }
 
-.day-inner { display:flex; gap:15px; }
+.day-inner {
+  display:flex;
+  gap:15px;
+}
 
 .icon-col {
   display:flex;
@@ -57,6 +80,7 @@ h2 { margin-bottom:15px; }
   font-size:13px;
 }
 
+/* version */
 .version {
   text-align:center;
   margin-top:20px;
@@ -85,63 +109,73 @@ h2 { margin-bottom:15px; }
 <script>
 const VERSION = new Date().toISOString();
 
-/* ✅ DIRECT MET ICON (geen mapping nodig) */
 function iconUrl(icon) {
   return `https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${icon}.svg`;
 }
 
 async function load() {
-  const res = await fetch("weather.json");
-  const data = await res.json();
+  try {
+    const res = await fetch("weather.json");
+    const data = await res.json();
 
-  /* CURRENT */
-  const currentIcon = data.forecast?.[0]?.icon || "cloudy";
+    if (!data.forecast) throw new Error("Ingen data");
 
-  document.getElementById("current").innerHTML = `
-    <img src="${iconUrl(currentIcon)}
-      <div>Nå</div>
-      <div class="temp">${Math.round(data.temperature)}°C</div>
-      <div>💧 ${data.humidity}%</div>
-    </div>
-  `;
+    /* ✅ CURRENT (fallback als 0) */
+    const currentIcon = data.forecast[0]?.icon || "cloudy";
 
-  const f = document.getElementById("forecast");
-  f.innerHTML = "";
+    document.getElementById("current").innerHTML = `
+      <img src="${iconUrl(currentIcon)}v>
+        <div>Nå</div>
+        <div class="temp">
+          ${data.temperature ? Math.round(data.temperature) + "°C" : "—"}
+        </div>
+        <div>💧 ${data.humidity ? data.humidity + "%" : "—"}</div>
+      </div>
+    `;
 
-  data.forecast.forEach(d => {
+    /* ✅ FORECAST */
+    const f = document.getElementById("forecast");
+    f.innerHTML = "";
 
-    const dag = new Date(d.date)
-      .toLocaleDateString("no-NO",{weekday:"long", timeZone:"Europe/Oslo"});
+    data.forecast.forEach(d => {
 
-    const icon = d.icon || "cloudy";
+      const dag = new Date(d.date)
+        .toLocaleDateString("no-NO",{weekday:"long"});
 
-    f.innerHTML += `
-      <div class="day">
+      const sun = d.sun ?? "-";
 
-        <div class="day-inner">
+      f.innerHTML += `
+        <div class="day">
 
-          <div class="icon-col">
-            <img src="${iconUrl(icon     <img src="${iconUrl("rainmg src="${iconUrl("wind")}src="${iconUrl("clearsky_day      <div class="data-col">
+          <div class="day-inner">
 
-            <div class="title">${dag}</div>
+            <div class="icon-col">
+              <img src="${iconUrl(d            <img src="${icon         <img src="${iconUrl("wind<img src="${iconUrl("clearsky_day")}       <div class="data-col">
 
-            <div class="max">${Math.round(d.max)}°C</div>
-            <div class="min">${Math.round(d.min)}°C</div>
+              <div class="title">${dag}</div>
 
-            <div class="row">Nedbør <span>${d.rain.toFixed(1)} mm</span></div>
-            <div class="row">Vind <span>${d.wind.toFixed(1)} m/s</span></div>
-            <div class="row">Soltimer <span>${d.sun} h</span></div>
-            <div class="row">UV <span>${d.uv}</span></div>
+              <div class="max">${Math.round(d.max)}°C</div>
+              <div class="min">${Math.round(d.min)}°C</div>
+
+              <div class="row">Nedbør <span>${d.rain.toFixed(1)} mm</span></div>
+              <div class="row">Vind <span>${d.wind.toFixed(1)} m/s</span></div>
+              <div class="row">Soltimer <span>${sun} h</span></div>
+              <div class="row">UV <span>${d.uv}</span></div>
+
+            </div>
 
           </div>
 
         </div>
+      `;
+    });
 
-      </div>
-    `;
-  });
+    document.getElementById("version").innerText = "Versjon: " + VERSION;
 
-  document.getElementById("version").innerText = "Versjon: " + VERSION;
+  } catch (e) {
+    document.getElementById("current").innerText = "Feil ved lasting av værdata";
+    console.error(e);
+  }
 }
 
 load();
