@@ -6,34 +6,37 @@
 
 <style>
 body {
-  margin: 0;
-  font-family: -apple-system, sans-serif;
+  margin:0;
+  font-family:-apple-system;
   background: linear-gradient(180deg,#1e3c72,#2a5298,#4facfe);
-  color: white;
+  color:white;
 }
 
-.container { max-width: 500px; margin:auto; padding:20px; }
+.container { max-width:500px; margin:auto; padding:20px; }
 
 .card {
   background: rgba(255,255,255,0.12);
-  border-radius: 20px;
-  padding: 20px;
-  margin-bottom: 20px;
+  border-radius:20px;
+  padding:20px;
+  margin-bottom:20px;
 }
 
-.days { display:flex; gap:10px; }
+.days {
+  display:flex;
+  gap:10px;
+}
 
 .day {
   flex:1;
   background: rgba(255,255,255,0.2);
-  border-radius: 15px;
-  padding:10px;
+  border-radius:15px;
+  padding:12px;
   text-align:center;
 }
 
 .big { font-size:42px; }
-.icon { font-size:28px; }
-.small { font-size:12px; opacity:0.8; margin-top:5px; }
+.icon { font-size:30px; }
+.small { font-size:12px; opacity:0.8; margin-top:3px; }
 </style>
 </head>
 
@@ -67,7 +70,7 @@ async function load(){
  const time = new Date(data.time.replace(" ","T")+"Z")
    .toLocaleString("no-NO",{timeZone:"Europe/Oslo"});
 
- // ✅ CURRENT
+ // ✅ current
  document.getElementById("current").innerHTML = `
    <div>NÅ</div>
    <div class="icon">${icon(data.temperature)}</div>
@@ -76,7 +79,6 @@ async function load(){
    <div class="small">${time}</div>
  `;
 
- // ✅ FORECAST PRO
  const f = document.getElementById("forecast");
  f.innerHTML = "";
 
@@ -86,14 +88,19 @@ async function load(){
 
    const dag = dt.toLocaleDateString("no-NO", {
      weekday:"short",
+     day:"numeric",
+     month:"short",
      timeZone:"Europe/Oslo"
    });
 
    f.innerHTML += `
      <div class="day">
        <div>${dag}</div>
+
        <div class="icon">${icon(d.temp)}</div>
-       <div>${d.temp}°C</div>
+
+       <div>${d.max.toFixed(1)}°</div>
+       <div class="small">${d.min.toFixed(1)}°</div>
 
        <div class="small">🌧️ ${d.rain} mm</div>
        <div class="small">🌬️ ${d.wind} m/s</div>
@@ -108,3 +115,4 @@ load();
 
 </body>
 </html>
+``
