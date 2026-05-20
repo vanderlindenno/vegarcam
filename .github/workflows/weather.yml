@@ -52,14 +52,14 @@ jobs:
           | .dashboard_data.Humidity' data.json)
 
           if [ -z "$TEMP" ] || [ "$TEMP" = "null" ]; then
-            echo "❌ Utendørs module niet gevonden"
+            echo "❌ Utendørs sensor niet gevonden"
             exit 1
           fi
 
           echo "TEMP=$TEMP" >> $GITHUB_ENV
           echo "HUM=$HUM" >> $GITHUB_ENV
 
-      # ✅ 5-daagse forecast
+      # ✅ 5 dagen forecast (stabiel)
       - name: Get forecast
         run: |
           curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=58.795&lon=8.79" \
@@ -73,7 +73,7 @@ jobs:
             {time: .properties.timeseries[36].time, temp: .properties.timeseries[36].data.instant.details.air_temperature}
           ]' forecast.json > forecast_out.json
 
-      # ✅ JSON maken
+      # ✅ JSON
       - name: Create weather.json
         run: |
           echo "{
