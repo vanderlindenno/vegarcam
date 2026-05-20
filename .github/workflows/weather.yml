@@ -15,11 +15,9 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      # ✅ 1. NIEUW ACCESS TOKEN HALEN (BELANGRIJK)
+      # ✅ Token ophalen
       - name: Get Netatmo token
         run: |
-          echo "Getting new access token..."
-
           curl -s -X POST https://api.netatmo.com/oauth2/token \
           -d "grant_type=refresh_token" \
           -d "refresh_token=${{ secrets.NETATMO_REFRESH_TOKEN }}" \
@@ -27,79 +25,47 @@ jobs:
           -d "client_secret=${{ secrets.NETATMO_CLIENT_SECRET }}" \
           > token.json
 
-          cat token.json
-
           ACCESS_TOKEN=$(jq -r '.access_token' token.json)
-
-          if [ "$ACCESS_TOKEN" = "null" ] || [ -z "$ACCESS_TOKEN" ]; then
-            echo "❌ Token ophalen mislukt"
-            exit 1
-          fi
-
           echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
 
-
-      # ✅ 2. Netatmo data ophalen
+      # ✅ Netatmo data
       - name: Get Netatmo data
         run: |
           curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
           https://api.netatmo.com/api/getstationsdata > data.json
 
-          echo "=== DATA ==="
-          cat data.json
-
-
-      # ✅ 3. Data automatisch vinden
-      - name: Extract weather
-        run: |
           TEMP=$(jq -r '.. | objects | select(has("Temperature")) | .Temperature' data.json | head -n 1)
           HUM=$(jq -r '.. | objects | select(has("Humidity")) | .Humidity' data.json | head -n 1)
-
-          echo "TEMP = $TEMP"
-          echo "HUM = $HUM"
-
-          if [ "$TEMP" = "null" ] || [ -z "$TEMP" ]; then
-            echo "❌ Geen temperatuur gevonden"
-            exit 1
-          fi
 
           echo "TEMP=$TEMP" >> $GITHUB_ENV
           echo "HUM=$HUM" >> $GITHUB_ENV
 
-
-      # ✅ 4. Forecast ophalen
+      # ✅ Forecast (3 dagen)
       - name: Get forecast
         run: |
           curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=58.795&lon=8.79" \
           -H "User-Agent: weather-app" > forecast.json
 
-          F_TEMP=$(jq -r '.properties.timeseries[0].data.instant.details.air_temperature' forecast.json)
-          F_TIME=$(jq -r '.properties.timeseries[0].time' forecast.json)
+          jq '[.properties.timeseries[0,4,8,12,16,20] 
+               | {time: .time, temp: .data.instant.details.air_temperature}]' \
+               forecast.json > forecast_out.json
 
-          echo "F_TEMP=$F_TEMP" >> $GITHUB_ENV
-          echo "F_TIME=$F_TIME" >> $GITHUB_ENV
-
-
-      # ✅ 5. JSON maken
+      # ✅ JSON maken (met juiste tijdzone)
       - name: Create weather.json
         run: |
           echo "{
             \"temperature\": $TEMP,
             \"humidity\": $HUM,
-            \"forecast_temp\": $F_TEMP,
-            \"forecast_time\": \"$F_TIME\",
-            \"time\": \"$(date '+%Y-%m-%d %H:%M')\"
+            \"forecast\": $(cat forecast_out.json),
+            \"time\": \"$(TZ='Europe/Oslo' date '+%Y-%m-%d %H:%M:%S')\"
           }" > weather.json
 
-          cat weather.json
-
-
-      # ✅ 6. Commit + push
+      # ✅ Push
       - name: Commit and push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
 
           git add weather.json
-          git commit -m "Update weather data" || echo "No changes"
+          git commit -m "Update weather" || echo "No changes"
           git push
