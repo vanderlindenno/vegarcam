@@ -14,7 +14,6 @@ body {
   color:#4a5568;
 }
 
-/* container */
 .container {
   max-width:900px;
   margin:auto;
@@ -25,7 +24,7 @@ h2 {
   margin-bottom:15px;
 }
 
-/* ✅ CURRENT */
+/* CURRENT */
 .current {
   background:#f4f6fa;
   border-radius:25px;
@@ -34,31 +33,20 @@ h2 {
   box-shadow:0 4px 12px rgba(0,0,0,0.08);
 }
 
-.current .temp {
+.temp {
   font-size:42px;
   font-weight:bold;
 }
 
-.current .meta {
-  font-size:14px;
-  color:#6b7280;
-}
-
-.current-row {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-
-/* ✅ FORECAST */
+/* FORECAST */
 .days {
   display:flex;
   gap:15px;
 }
 
-/* kaarten */
 .day {
   flex:1;
+  min-width:220px;
   background:#f4f6fa;
   border-radius:25px;
   padding:20px;
@@ -66,23 +54,18 @@ h2 {
   box-shadow:0 4px 12px rgba(0,0,0,0.08);
 }
 
-/* highlight eerste dag */
 .day:first-child .title {
   color:#f97316;
-  font-weight:600;
 }
 
 .title {
   font-size:16px;
   margin-bottom:10px;
-  color:#6b7280;
-  text-transform:capitalize;
 }
 
 .icon {
   width:60px;
   height:60px;
-  margin:10px 0;
 }
 
 .max {
@@ -91,45 +74,26 @@ h2 {
 }
 
 .min {
-  font-size:16px;
   color:#9aa3b2;
-  margin-bottom:10px;
 }
 
 .row {
   display:flex;
   justify-content:space-between;
   font-size:13px;
-  margin:4px 0;
 }
 
-/* ✅ MOBILE */
-@media (max-width: 600px) {
+/* VERSION */
+.version {
+  text-align:center;
+  margin-top:25px;
+  font-size:12px;
+  color:#888;
+}
 
-  .days {
-    flex-direction:column;
-  }
-
-  .day {
-    text-align:left;
-    display:flex;
-    align-items:center;
-    gap:15px;
-  }
-
-  .day-content {
-    flex:1;
-  }
-
-  .icon {
-    width:50px;
-    height:50px;
-  }
-
-  .row {
-    font-size:12px;
-  }
-
+/* MOBILE */
+@media (max-width:600px) {
+  .days { flex-direction:column; }
 }
 </style>
 
@@ -139,74 +103,69 @@ h2 {
 
 <div class="container">
 
-  <h2>📍 Vegår</h2>
+<h2>📍 Vegår</h2>
 
-  <!-- ✅ CURRENT -->
-  <div id="current" class="current">Laster...</div>
+<div id="current" class="current">Laster...</div>
 
-  <!-- ✅ FORECAST -->
-  <div class="days" id="forecast"></div>
+<div class="days" id="forecast"></div>
+
+<div id="version" class="version"></div>
 
 </div>
 
 <script>
+const VERSION = new Date().toISOString(); // ✅ auto update
+
 async function load() {
   const res = await fetch("weather.json");
   const data = await res.json();
 
-  // ✅ huidige data
-  const now = document.getElementById("current");
-
-  const time = new Date(data.time.replace(" ","T")+"Z")
-    .toLocaleString("no-NO",{timeZone:"Europe/Oslo"});
-
-  now.innerHTML = `
-    <div class="current-row">
-      <div>
-        <div>Nå</div>
-        <div class="temp">${Math.round(data.temperature)}°C</div>
-        <div class="meta">💧 ${data.humidity}%</div>
-        <div class="meta">${time}</div>
-      </div>
-    </div>
+  // ✅ CURRENT
+  document.getElementById("current").innerHTML = `
+    <div>Nå</div>
+    <div class="temp">${Math.round(data.temperature)}°C</div>
+    <div>💧 ${data.humidity}%</div>
   `;
 
-  // ✅ forecast
+  // ✅ FORECAST
   const f = document.getElementById("forecast");
   f.innerHTML = "";
 
-  data.forecast.forEach((d, i) => {
+  data.forecast.forEach(d => {
 
     const date = new Date(d.date);
-
     const dag = date.toLocaleDateString("no-NO", {
       weekday:"long",
       timeZone:"Europe/Oslo"
     });
 
-    const iconUrl = `https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${d.icon || "cloudy"}.svg`;
+    // ✅ SAFE ICON (fallback voorkomt broken image)
+    const icon = d.icon || "cloudy";
+    const iconUrl = `https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${icon}.svg`;
 
     const sunHours = Math.max(0, 10 - d.rain).toFixed(1);
 
     f.innerHTML += `
       <div class="day">
 
-        <img src="${iconUrl}" class="s="day-content">
-          <div class="title">${dag}</div>
+        <img src="${iconUrl}" class="icon">
 
-          <div class="max">${Math.round(d.max)}°C</div>
-          <div class="min">${Math.round(d.min)}°C</div>
+        <div class="title">${dag}</div>
 
-          <div class="row"><span>🌧️</span><span>${d.rain.toFixed(1)} mm</span></div>
-          <div class="row"><span>🌬️</span><span>${d.wind.toFixed(1)} m/s</span></div>
-          <div class="row"><span>☀️</span><span>${sunHours} h</span></div>
-          <div class="row"><span>UV</span><span>${d.uv.toFixed(0)}</span></div>
-        </div>
+        <div class="max">${Math.round(d.max)}°C</div>
+        <div class="min">${Math.round(d.min)}°C</div>
+
+        <div class="row">🌧️ <span>${d.rain.toFixed(1)} mm</span></div>
+        <div class="row">🌬️ <span>${d.wind.toFixed(1)} m/s</span></div>
+        <div class="row">☀️ <span>${sunHours} h</span></div>
+        <div class="row">UV <span>${d.uv.toFixed(0)}</span></div>
 
       </div>
     `;
   });
 
+  // ✅ VERSION zichtbaar maken
+  document.getElementById("version").innerText = "Versjon: " + VERSION;
 }
 
 load();
