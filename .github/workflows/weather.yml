@@ -89,4 +89,3 @@ jobs:
           git add weather.json
           git commit -m "Update weather" || echo "No changes"
           git push
-``
