@@ -15,8 +15,8 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      # ✅ Netatmo token
-      - name: Get token
+      # ✅ NETATMO TOKEN
+      - name: Get Netatmo token
         run: |
           curl -s -X POST https://api.netatmo.com/oauth2/token \
             -d "grant_type=refresh_token" \
@@ -26,26 +26,41 @@ jobs:
             > token.json
 
           ACCESS_TOKEN=$(jq -r '.access_token' token.json)
+
+          if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "null" ]; then
+            echo "❌ Token fout"
+            exit 1
+          fi
+
           echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
 
-      # ✅ Utendørs sensor
+      # ✅ UTENDØRS DATA
       - name: Get Netatmo data
         run: |
           curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
           https://api.netatmo.com/api/getstationsdata > data.json
 
-          TEMP=$(jq -r '.body.devices[].modules[] | select(.module_name=="Utendørs") | .dashboard_data.Temperature' data.json | head -n 1)
-          HUM=$(jq -r '.body.devices[].modules[] | select(.module_name=="Utendørs") | .dashboard_data.Humidity' data.json | head -n 1)
+          TEMP=$(jq -r '
+          .body.devices[].modules[]
+          | select(.module_name == "Utendørs")
+          | .dashboard_data.Temperature
+          ' data.json | head -n 1)
 
-          if [ -z "$TEMP" ]; then
-            echo "❌ Geen Utendørs"
+          HUM=$(jq -r '
+          .body.devices[].modules[]
+          | select(.module_name == "Utendørs")
+          | .dashboard_data.Humidity
+          ' data.json | head -n 1)
+
+          if [ -z "$TEMP" ] || [ "$TEMP" = "null" ]; then
+            echo "❌ Utendørs niet gevonden"
             exit 1
           fi
 
           echo "TEMP=$TEMP" >> $GITHUB_ENV
           echo "HUM=$HUM" >> $GITHUB_ENV
 
-      # ✅ 3 DAGEN PRO (MIDDAY SELECTIE)
+      # ✅ 3 DAGEN FORECAST (BULLETPROOF)
       - name: Get forecast
         run: |
           curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=58.795&lon=8.79" \
@@ -53,7 +68,8 @@ jobs:
 
           jq '
           .properties.timeseries
-          | map(select(.time | contains("12:00:00")))[1:4]
+          | map(select(.time | contains("12:00:00")))
+          | if length >= 4 then .[1:4] else .[0:3] end
           | map({
               time: .time,
               temp: .data.instant.details.air_temperature,
@@ -67,7 +83,7 @@ jobs:
 
           cat forecast_out.json
 
-      # ✅ JSON output
+      # ✅ JSON MAKEN
       - name: Create weather.json
         run: |
           echo "{
@@ -79,8 +95,8 @@ jobs:
 
           cat weather.json
 
-      # ✅ push
-      - name: Commit
+      # ✅ COMMIT
+      - name: Commit & push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
