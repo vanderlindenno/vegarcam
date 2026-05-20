@@ -15,26 +15,7 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Get Netatmo token
-        run: |
-          curl -s -X POST https://api.netatmo.com/oauth2/token \
-            -d "grant_type=refresh_token" \
-            -d "refresh_token=${{ secrets.NETATMO_REFRESH_TOKEN }}" \
-            -d "client_id=${{ secrets.NETATMO_CLIENT_ID }}" \
-            -d "client_secret=${{ secrets.NETATMO_CLIENT_SECRET }}" \
-            > token.json
-
-          echo "ACCESS_TOKEN=$(jq -r '.access_token' token.json)" >> $GITHUB_ENV
-
-      - name: Get Netatmo data
-        run: |
-          curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
-          https://api.netatmo.com/api/getstationsdata > data.json
-
-          echo "TEMP=$(jq -r '.body.devices[].modules[].dashboard_data.Temperature' data.json | head -1)" >> $GITHUB_ENV
-          echo "HUM=$(jq -r '.body.devices[].modules[].dashboard_data.Humidity' data.json | head -1)" >> $GITHUB_ENV
-
-      - name: Get forecast
+      - name: Forecast
         run: |
           curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=58.795&lon=8.79" \
           -H "User-Agent: weather-app" > forecast.json
@@ -54,7 +35,7 @@ jobs:
               wind: (map(.data.instant.details.wind_speed) | add / length),
               uv: (map(.data.instant.details.ultraviolet_index_clear_sky // 0) | max),
 
-              # ✅ echte zonuren
+              # ✅ FIXED ZONUREN
               sun: (
                 map(
                   if (.data.next_1_hours.details.precipitation_amount // 0) == 0
@@ -74,8 +55,8 @@ jobs:
       - name: Create JSON
         run: |
           echo "{
-            \"temperature\": $TEMP,
-            \"humidity\": $HUM,
+            \"temperature\": 0,
+            \"humidity\": 0,
             \"forecast\": $(cat forecast_out.json)
           }" > weather.json
 
@@ -84,5 +65,5 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add weather.json
-          git commit -m "Update weather" || echo "No change"
+          git commit -m "update" || echo "no change"
           git push
