@@ -4,59 +4,44 @@
 <meta charset="UTF-8">
 <title>Vær Vegår</title>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <style>
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: -apple-system, sans-serif;
   background: linear-gradient(180deg, #1e3c72, #2a5298, #4facfe);
   color: white;
 }
 
 .container {
-  max-width: 420px;
+  max-width: 500px;
   margin: auto;
   padding: 20px;
 }
 
-.location {
-  font-size: 20px;
-  margin-bottom: 10px;
-}
-
 .card {
   background: rgba(255,255,255,0.12);
-  border-radius: 25px;
+  border-radius: 20px;
   padding: 20px;
   margin-bottom: 20px;
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(12px);
 }
 
-.title {
-  font-size: 13px;
-  opacity: 0.8;
-}
-
-.temp {
-  font-size: 48px;
-  font-weight: bold;
-}
-
-.icon {
-  font-size: 42px;
-}
-
-.small {
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-.row {
+.days {
   display: flex;
-  justify-content: space-between;
-  margin-top: 10px;
+  gap: 10px;
+  overflow-x: auto;
 }
+
+.day {
+  min-width: 110px;
+  background: rgba(255,255,255,0.15);
+  padding: 10px;
+  border-radius: 15px;
+  text-align: center;
+}
+
+.icon { font-size: 28px; }
+.temp { font-size: 40px; }
 </style>
 </head>
 
@@ -64,100 +49,62 @@ body {
 
 <div class="container">
 
-  <div class="location">📍 Vegår</div>
+<h2>📍 Vegår</h2>
 
-  <div class="card" id="current">Laster...</div>
-  <div class="card" id="forecast">Laster...</div>
+<div class="card" id="current">Laster...</div>
 
-  <div class="card">
-    <div class="title">📊 Temperatur</div>
-    <canvas id="chart"></canvas>
-  </div>
+<div class="card">
+  <div>5 DAGERS VARSEL</div>
+  <div class="days" id="forecast"></div>
+</div>
 
 </div>
 
 <script>
-function icon(temp) {
-  if (temp <= 0) return "❄️";
-  if (temp < 10) return "🌥️";
-  if (temp < 20) return "⛅";
+function icon(t){
+  if(t < 0) return "❄️";
+  if(t < 10) return "🌥️";
+  if(t < 20) return "⛅";
   return "☀️";
 }
 
-async function load() {
-  const res = await fetch("weather.json");
-  const data = await res.json();
+async function load(){
+ const res = await fetch("weather.json");
+ const data = await res.json();
 
-  // ✅ FIX TIJD (correct parsed + Oslo)
-  const time = new Date(data.time.replace(" ", "T") + "Z")
-    .toLocaleString("no-NO", {
-      timeZone: "Europe/Oslo",
-      hour: "2-digit",
-      minute: "2-digit",
-      day: "numeric",
-      month: "numeric"
-    });
+ // ✅ Correcte tijd fix
+ const time = new Date(data.time.replace(" ","T")+"Z")
+   .toLocaleString("no-NO",{timeZone:"Europe/Oslo"});
 
-  // ✅ NÅ
-  document.getElementById("current").innerHTML = `
-    <div class="title">NÅ</div>
-    <div class="icon">${icon(data.temperature)}</div>
-    <div class="temp">${data.temperature}°C</div>
-    💧 ${data.humidity}%<br>
-    <div class="small">Oppdatert: ${time}</div>
-  `;
+ // ✅ NU
+ document.getElementById("current").innerHTML = `
+   <div>NÅ</div>
+   <div class="icon">${icon(data.temperature)}</div>
+   <div class="temp">${data.temperature}°C</div>
+   💧 ${data.humidity}%<br>
+   <small>${time}</small>
+ `;
 
-  // ✅ FORECAST (check fix)
-  const div = document.getElementById("forecast");
+ // ✅ FORECAST
+ const f = document.getElementById("forecast");
+ f.innerHTML = "";
 
-  if (!data.forecast || data.forecast.length === 0) {
-    div.innerHTML = "❌ Ingen værdata";
-    return;
-  }
+ data.forecast.forEach(d => {
+   const dt = new Date(d.time);
 
-  let html = `<div class="title">3 DAGER</div>`;
+   const dag = dt.toLocaleDateString("no-NO", {
+     weekday: "long",
+     timeZone: "Europe/Oslo"
+   });
 
-  data.forecast.forEach(f => {
-    const t = new Date(f.time).toLocaleString("no-NO", {
-      timeZone: "Europe/Oslo",
-      weekday: "short",
-      hour: "2-digit"
-    });
-
-    html += `
-      <div class="row">
-        <div>${icon(f.temp)}</div>
-        <div>${t}</div>
-        <div>${f.temp}°C</div>
-      </div>
-    `;
-  });
-
-  div.innerHTML = html;
-
-  // ✅ GRAF
-  const ctx = document.getElementById("chart");
-
-  const labels = data.forecast.map(f =>
-    new Date(f.time).getHours() + ":00"
-  );
-
-  const temps = data.forecast.map(f => f.temp);
-
-  new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: labels,
-      datasets: [{
-        data: temps,
-        borderWidth: 2,
-        tension: 0.4
-      }]
-    },
-    options: {
-      plugins: { legend: { display: false } }
-    }
-  });
+   f.innerHTML += `
+     <div class="day">
+       <div>${dag}</div>
+       <div class="icon">${icon(d.temp)}</div>
+       <div>${d.temp}°C</div>
+     </div>
+   `;
+ });
 }
 
 load();
@@ -165,3 +112,4 @@ load();
 
 </body>
 </html>
+``
