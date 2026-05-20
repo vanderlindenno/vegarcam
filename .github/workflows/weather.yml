@@ -18,7 +18,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq
 
-      # ✅ 1. Netatmo data ophalen
+      # ✅ 1. Netatmo ophalen
       - name: Get Netatmo data
         run: |
           echo "Calling Netatmo API..."
@@ -26,66 +26,59 @@ jobs:
           curl -s -H "Authorization: Bearer ${{ secrets.NETATMO_TOKEN }}" \
           https://api.netatmo.com/api/getstationsdata > data.json
 
-          echo "=== API RESPONSE ==="
-          cat data.json
+          echo "=== API RESPONSE (short) ==="
+          jq '.body.devices' data.json
 
-      # ✅ 2. Extract actuele data (FIXED!)
-      - name: Extract current weather
+      # ✅ 2. Slim zoeken naar temperatuur & humidity
+      - name: Extract current weather (auto-detect)
         run: |
-          echo "=== PARSING CURRENT DATA ==="
+          echo "=== AUTO DETECT DATA ==="
 
-          TEMP=$(jq -r '.body.devices[0].modules[0].dashboard_data.Temperature // .body.devices[0].dashboard_data.Temperature' data.json)
-          HUM=$(jq -r '.body.devices[0].modules[0].dashboard_data.Humidity // .body.devices[0].dashboard_data.Humidity' data.json)
+          TEMP=$(jq -r '
+            .. | objects | select(has("Temperature")) | .Temperature
+          ' data.json | head -n 1)
+
+          HUM=$(jq -r '
+            .. | objects | select(has("Humidity")) | .Humidity
+          ' data.json | head -n 1)
 
           echo "TEMP = $TEMP"
           echo "HUM = $HUM"
 
-          if [ "$TEMP" = "null" ] || [ "$HUM" = "null" ]; then
-            echo "❌ Geen geldige Netatmo data"
+          if [ -z "$TEMP" ] || [ "$TEMP" = "null" ]; then
+            echo "❌ Temperature niet gevonden"
+            exit 1
+          fi
+
+          if [ -z "$HUM" ] || [ "$HUM" = "null" ]; then
+            echo "❌ Humidity niet gevonden"
             exit 1
           fi
 
           echo "TEMP=$TEMP" >> $GITHUB_ENV
           echo "HUM=$HUM" >> $GITHUB_ENV
 
-      # ✅ 3. Forecast ophalen (Met.no)
+      # ✅ 3. Forecast ophalen
       - name: Get forecast data (Met.no)
         run: |
           LAT=52.37
           LON=4.90
 
-          echo "Calling Met.no API..."
-
           curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=$LAT&lon=$LON" \
           -H "User-Agent: github-weather-app" > forecast.json
 
-          echo "=== FORECAST RESPONSE ==="
-          cat forecast.json
-
-      # ✅ 4. Forecast extracten
+      # ✅ 4. Forecast uitlezen
       - name: Extract forecast
         run: |
-          echo "=== PARSING FORECAST ==="
-
           F_TEMP=$(jq -r '.properties.timeseries[0].data.instant.details.air_temperature' forecast.json)
           F_TIME=$(jq -r '.properties.timeseries[0].time' forecast.json)
-
-          echo "Forecast TEMP = $F_TEMP"
-          echo "Forecast TIME = $F_TIME"
-
-          if [ "$F_TEMP" = "null" ]; then
-            echo "❌ Geen forecast data"
-            exit 1
-          fi
 
           echo "F_TEMP=$F_TEMP" >> $GITHUB_ENV
           echo "F_TIME=$F_TIME" >> $GITHUB_ENV
 
-      # ✅ 5. weather.json maken
+      # ✅ 5. JSON maken
       - name: Create weather.json
         run: |
-          echo "=== WRITING weather.json ==="
-
           echo "{
             \"temperature\": $TEMP,
             \"humidity\": $HUM,
@@ -96,7 +89,7 @@ jobs:
 
           cat weather.json
 
-      # ✅ 6. Commit & push
+      # ✅ 6. Commit
       - name: Commit and push
         run: |
           git config user.name "github-actions"
