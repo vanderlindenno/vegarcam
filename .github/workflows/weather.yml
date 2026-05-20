@@ -16,7 +16,7 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      # ✅ Netatmo token
+      # ✅ TOKEN
       - name: Get Netatmo token
         run: |
           curl -s -X POST https://api.netatmo.com/oauth2/token \
@@ -27,15 +27,9 @@ jobs:
             > token.json
 
           ACCESS_TOKEN=$(jq -r '.access_token' token.json)
-
-          if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "null" ]; then
-            echo "❌ Token error"
-            exit 1
-          fi
-
           echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
 
-      # ✅ Netatmo (Utendørs)
+      # ✅ JUISTE UTENDØRS SENSOR
       - name: Get Netatmo data
         run: |
           curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
@@ -44,34 +38,34 @@ jobs:
           TEMP=$(jq -r '
           .body.devices[].modules[]
           | select(.module_name == "Utendørs")
-          | .dashboard_data.Temperature' data.json)
+          | .dashboard_data.Temperature
+          ' data.json | head -n 1)
 
           HUM=$(jq -r '
           .body.devices[].modules[]
           | select(.module_name == "Utendørs")
-          | .dashboard_data.Humidity' data.json)
-
-          if [ -z "$TEMP" ] || [ "$TEMP" = "null" ]; then
-            echo "❌ Utendørs sensor niet gevonden"
-            exit 1
-          fi
+          | .dashboard_data.Humidity
+          ' data.json | head -n 1)
 
           echo "TEMP=$TEMP" >> $GITHUB_ENV
           echo "HUM=$HUM" >> $GITHUB_ENV
 
-      # ✅ 5 dagen forecast (stabiel)
+      # ✅ ECHTE 5 DAGEN (GEEN DUPLICATEN)
       - name: Get forecast
         run: |
           curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=58.795&lon=8.79" \
           -H "User-Agent: github-weather-app" > forecast.json
 
-          jq '[
-            {time: .properties.timeseries[4].time,  temp: .properties.timeseries[4].data.instant.details.air_temperature},
-            {time: .properties.timeseries[12].time, temp: .properties.timeseries[12].data.instant.details.air_temperature},
-            {time: .properties.timeseries[20].time, temp: .properties.timeseries[20].data.instant.details.air_temperature},
-            {time: .properties.timeseries[28].time, temp: .properties.timeseries[28].data.instant.details.air_temperature},
-            {time: .properties.timeseries[36].time, temp: .properties.timeseries[36].data.instant.details.air_temperature}
-          ]' forecast.json > forecast_out.json
+          jq '
+          .properties.timeseries
+          | map(select(.time | contains("12:00:00")))[:5]
+          | map({
+              time: .time,
+              temp: .data.instant.details.air_temperature
+            })
+          ' forecast.json > forecast_out.json
+
+          cat forecast_out.json
 
       # ✅ JSON
       - name: Create weather.json
@@ -85,7 +79,7 @@ jobs:
 
           cat weather.json
 
-      # ✅ Push
+      # ✅ PUSH
       - name: Commit
         run: |
           git config user.name "github-actions"
@@ -94,3 +88,4 @@ jobs:
           git add weather.json
           git commit -m "Update weather" || echo "No changes"
           git push
+``
