@@ -28,8 +28,8 @@ jobs:
           ACCESS_TOKEN=$(jq -r '.access_token' token.json)
           echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
 
-      # ✅ UTENDØRS
-      - name: Get Netatmo
+      # ✅ UTENDØRS SENSOR
+      - name: Get Netatmo data
         run: |
           curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
           https://api.netatmo.com/api/getstationsdata > data.json
@@ -40,8 +40,8 @@ jobs:
           echo "TEMP=$TEMP" >> $GITHUB_ENV
           echo "HUM=$HUM" >> $GITHUB_ENV
 
-      # ✅ FORECAST ENGINE (ECHTE DAG AGGREGATIE)
-      - name: Get forecast
+      # ✅ ✅ FULL DAY WEATHER ENGINE
+      - name: Get forecast (daily aggregated)
         run: |
           curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=58.795&lon=8.79" \
           -H "User-Agent: weather-app" > forecast.json
@@ -49,39 +49,60 @@ jobs:
           jq '
           .properties.timeseries
 
-          # groepeer per dag
+          # ✅ groepeer ALLE data per dag
           | group_by(.time[0:10])
 
-          # skip vandaag → pak volgende 3 dagen
+          # ✅ skip vandaag → pak morgen + 2 dagen
           | .[1:4]
 
-          # bereken per dag
+          # ✅ bereken alles per dag
           | map({
               date: (.[0].time[0:10]),
 
-              temp: (map(.data.instant.details.air_temperature) | add / length),
-
+              # 🌡️ min/max over HELE dag
               min: (map(.data.instant.details.air_temperature) | min),
               max: (map(.data.instant.details.air_temperature) | max),
 
-              rain: (map(.data.next_1_hours.details.precipitation_amount // 0) | add),
+              # 🌡️ gemiddelde (optioneel display)
+              temp: (map(.data.instant.details.air_temperature) | add / length),
 
-              wind: (map(.data.instant.details.wind_speed) | add / length),
+              # 🌧️ regen totaal (alle uren optellen)
+              rain: (
+                map(.data.next_1_hours.details.precipitation_amount // 0)
+                | add
+              ),
 
-              uv: (map(.data.instant.details.ultraviolet_index_clear_sky // 0) | max),
+              # 🌬️ wind gemiddeld
+              wind: (
+                map(.data.instant.details.wind_speed)
+                | add / length
+              ),
 
+              # ☀️ UV max van de dag
+              uv: (
+                map(.data.instant.details.ultraviolet_index_clear_sky // 0)
+                | max
+              ),
+
+              # 🌦️ BESTE ICON (meest voorkomende)
               icon: (
-                map(.data.next_1_hours.summary.symbol_code // empty)[0]
-                // map(.data.next_6_hours.summary.symbol_code // empty)[0]
-                // "cloudy"
+                map(
+                  .data.next_1_hours.summary.symbol_code
+                  // .data.next_6_hours.summary.symbol_code
+                  // "cloudy"
+                )
+                | group_by(.)
+                | max_by(length)
+                | .[0]
               )
           })
           ' forecast.json > forecast_out.json
 
+          echo "=== FORECAST RESULT ==="
           cat forecast_out.json
 
       # ✅ JSON
-      - name: Create json
+      - name: Create weather.json
         run: |
           echo "{
             \"temperature\": $TEMP,
@@ -90,11 +111,14 @@ jobs:
             \"time\": \"$(date -u '+%Y-%m-%d %H:%M:%S')\"
           }" > weather.json
 
+          cat weather.json
+
       # ✅ PUSH
-      - name: Commit
+      - name: Commit & push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
+
           git add weather.json
           git commit -m "Update weather" || echo "No changes"
           git push
