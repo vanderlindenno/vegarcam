@@ -13,12 +13,7 @@ body {
   color:#4a5568;
 }
 
-.container {
-  max-width:900px;
-  margin:auto;
-  padding:15px;
-}
-
+.container { max-width:900px; margin:auto; padding:15px; }
 h2 { margin-bottom:15px; }
 
 /* CURRENT */
@@ -29,30 +24,20 @@ h2 { margin-bottom:15px; }
   margin-bottom:20px;
   display:flex;
   align-items:center;
-  gap:20px;
-}
-
-.current img {
-  width:60px;
-}
-
-.temp {
-  font-size:42px;
-  font-weight:bold;
-}
-
-/* FORECAST */
-.days {
-  display:flex;
   gap:15px;
 }
+
+.current img { width:60px; }
+.temp { font-size:42px; font-weight:bold; }
+
+/* FORECAST */
+.days { display:flex; gap:15px; }
 
 .day {
   flex:1;
   background:#f4f6fa;
   border-radius:25px;
   padding:20px;
-  box-shadow:0 4px 12px rgba(0,0,0,0.08);
 }
 
 .day-inner {
@@ -60,31 +45,19 @@ h2 { margin-bottom:15px; }
   gap:15px;
 }
 
-/* icon kolom */
 .icon-col {
   display:flex;
   flex-direction:column;
-  align-items:center;
   gap:8px;
+  align-items:center;
 }
 
-.icon-col img {
-  width:28px;
-}
+.icon-col img { width:28px; }
 
-/* data */
-.data-col {
-  flex:1;
-}
+.data-col { flex:1; }
 
-.title {
-  font-weight:500;
-  margin-bottom:8px;
-}
-
-.day:first-child .title {
-  color:#f97316;
-}
+.title { font-weight:500; margin-bottom:6px; }
+.day:first-child .title { color:#f97316; }
 
 .max { font-size:26px; font-weight:600; }
 .min { color:#9aa3b2; margin-bottom:8px; }
@@ -108,7 +81,6 @@ h2 { margin-bottom:15px; }
   .days { flex-direction:column; }
 }
 </style>
-
 </head>
 
 <body>
@@ -118,9 +90,7 @@ h2 { margin-bottom:15px; }
 <h2>📍 Vegår</h2>
 
 <div id="current" class="current">Laster...</div>
-
 <div id="forecast" class="days"></div>
-
 <div id="version" class="version"></div>
 
 </div>
@@ -128,15 +98,19 @@ h2 { margin-bottom:15px; }
 <script>
 const VERSION = new Date().toISOString();
 
-/* ✅ ICON FIX */
-function mapIcon(i) {
-  if (!i) return "cloudy";
-  if (i.includes("clearsky")) return "clearsky_day";
-  if (i.includes("fair")) return "fair_day";
-  if (i.includes("partlycloudy")) return "partlycloudy_day";
-  if (i.includes("rain")) return "rain";
-  if (i.includes("snow")) return "snow";
-  if (i.includes("fog")) return "fog";
+/* ✅ BETERE ICON MAPPING */
+function mapIcon(icon) {
+  if (!icon) return "cloudy";
+
+  if (icon.includes("clearsky")) return "clearsky_day";
+  if (icon.includes("fair")) return "fair_day";
+  if (icon.includes("partlycloudy")) return "partlycloudy_day";
+  if (icon.includes("cloudy")) return "cloudy";
+  if (icon.includes("rainshowers")) return "rainshowers_day";
+  if (icon.includes("rain")) return "rain";
+  if (icon.includes("snow")) return "snow";
+  if (icon.includes("fog")) return "fog";
+
   return "cloudy";
 }
 
@@ -144,18 +118,18 @@ async function load() {
   const res = await fetch("weather.json");
   const data = await res.json();
 
-  /* ✅ CURRENT */
+  /* CURRENT */
   const currentIcon = mapIcon(data.forecast?.[0]?.icon);
 
   document.getElementById("current").innerHTML = `
-    <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${currentIcon}.svg
+    <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${currentIcon<div>
       <div>Nå</div>
       <div class="temp">${Math.round(data.temperature)}°C</div>
       <div>💧 ${data.humidity}%</div>
     </div>
   `;
 
-  /* ✅ FORECAST */
+  /* FORECAST */
   const f = document.getElementById("forecast");
   f.innerHTML = "";
 
@@ -165,6 +139,7 @@ async function load() {
       .toLocaleDateString("no-NO",{weekday:"long", timeZone:"Europe/Oslo"});
 
     const icon = mapIcon(d.icon);
+    const sun = d.sun ?? "-";
 
     f.innerHTML += `
       <div class="day">
@@ -172,7 +147,7 @@ async function load() {
         <div class="day-inner">
 
           <div class="icon-col">
-            <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${icon}.svg   <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/rain.svg   <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/wind       <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/clearsky_day.svg </div>
+            <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${icon}.svg   <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/rain       <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/wind.svg   <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/clearsky_day     </div>
 
           <div class="data-col">
 
@@ -183,7 +158,7 @@ async function load() {
 
             <div class="row">Nedbør <span>${d.rain.toFixed(1)} mm</span></div>
             <div class="row">Vind <span>${d.wind.toFixed(1)} m/s</span></div>
-            <div class="row">Soltimer <span>${d.sun} h</span></div>
+            <div class="row">Soltimer <span>${sun} h</span></div>
             <div class="row">UV <span>${d.uv}</span></div>
 
           </div>
