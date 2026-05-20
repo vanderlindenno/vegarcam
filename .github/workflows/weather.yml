@@ -28,7 +28,7 @@ jobs:
           ACCESS_TOKEN=$(jq -r '.access_token' token.json)
           echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
 
-      # ✅ Netatmo Utendørs
+      # ✅ Netatmo data
       - name: Get Netatmo
         run: |
           curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
@@ -40,7 +40,7 @@ jobs:
           echo "TEMP=$TEMP" >> $GITHUB_ENV
           echo "HUM=$HUM" >> $GITHUB_ENV
 
-      # ✅ ✅ PERFECTE DAG-ENGINE
+      # ✅ Forecast (FIXED DAG LOGICA)
       - name: Get forecast
         run: |
           curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=58.795&lon=8.79" \
@@ -49,15 +49,22 @@ jobs:
           jq '
           .properties.timeseries
 
-          # groepeer per dag
-          | group_by(.time[0:10])
+          # ✅ lokale dag berekenen (Oslo)
+          | map(. + {
+              local_date: (
+                (.time | fromdateiso8601 + 7200)
+                | strftime("%Y-%m-%d")
+              )
+          })
 
-          # neem morgen + 2 dagen
+          # ✅ groepeer per dag
+          | group_by(.local_date)
+
+          # ✅ skip vandaag → neem volgende 3
           | .[1:4]
 
-          # bereken per dag
           | map({
-              date: (.[0].time[0:10]),
+              date: .[0].local_date,
 
               min: (map(.data.instant.details.air_temperature) | min),
               max: (map(.data.instant.details.air_temperature) | max),
@@ -70,7 +77,6 @@ jobs:
 
               uv: (map(.data.instant.details.ultraviolet_index_clear_sky // 0) | max),
 
-              # meest voorkomende icoon
               icon: (
                 map(
                   .data.next_1_hours.summary.symbol_code
@@ -84,7 +90,7 @@ jobs:
           })
           ' forecast.json > forecast_out.json
 
-      # ✅ JSON maken
+      # ✅ JSON output
       - name: Create json
         run: |
           echo "{
@@ -96,7 +102,7 @@ jobs:
 
           cat weather.json
 
-      # ✅ push
+      # ✅ commit
       - name: Commit
         run: |
           git config user.name "github-actions"
