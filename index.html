@@ -1,26 +1,102 @@
 <!DOCTYPE html>
-<html>
+<html lang="nl">
 <head>
+  <meta charset="UTF-8">
   <title>Mijn Weerstation</title>
-</head>
-<body>
-  <h1>🌦️ Lokale Netatmo Weerdata</h1>
 
-  <div id="weather">Laden...</div>
-
-  <script>
-    async function loadWeather() {
-      const res = await fetch("weather.json");
-      const data = await res.json();
-
-      document.getElementById("weather").innerHTML = `
-        🌡️ ${data.temperature} °C <br>
-        💧 ${data.humidity} % <br>
-        ⏱️ Laatste update: ${data.time}
-      `;
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to bottom, #4facfe, #00f2fe);
+      color: white;
+      text-align: center;
+      padding: 30px;
     }
 
-    loadWeather();
-  </script>
+    .card {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      padding: 20px;
+      margin: 20px auto;
+      width: 300px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    .temp {
+      font-size: 40px;
+      font-weight: bold;
+    }
+
+    .section-title {
+      margin-top: 10px;
+      font-weight: bold;
+      opacity: 0.8;
+    }
+
+    .small {
+      font-size: 12px;
+      opacity: 0.7;
+      margin-top: 10px;
+    }
+
+    .icon {
+      font-size: 35px;
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>🌦️ Mijn Weerstation</h1>
+
+  <div class="card" id="current">
+    Laden...
+  </div>
+
+  <div class="card" id="forecast">
+    Laden...
+  </div>
+
+<script>
+function getWeatherIcon(temp) {
+  if (temp < 0) return "❄️";
+  if (temp < 10) return "🌥️";
+  if (temp < 20) return "⛅";
+  return "☀️";
+}
+
+async function loadWeather() {
+  const res = await fetch("weather.json");
+  const data = await res.json();
+
+  const iconNow = getWeatherIcon(data.temperature);
+  const iconForecast = getWeatherIcon(data.forecast_temp);
+
+  document.getElementById("current").innerHTML = `
+    <div class="section-title">NU</div>
+    <div class="icon">${iconNow}</div>
+    <div class="temp">${data.temperature}°C</div>
+    💧 ${data.humidity}%<br>
+    <div class="small">Update: ${data.time}</div>
+  `;
+
+  document.getElementById("forecast").innerHTML = `
+    <div class="section-title">FORECAST</div>
+    <div class="icon">${iconForecast}</div>
+    <div class="temp">${data.forecast_temp}°C</div>
+    ⏱️ ${data.forecast_time}
+  `;
+}
+
+loadWeather();
+</script>
+
 </body>
 </html>
+``
