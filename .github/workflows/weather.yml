@@ -15,8 +15,8 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      # ✅ TOKEN
-      - name: Get Netatmo token
+      # ✅ Netatmo token
+      - name: Get token
         run: |
           curl -s -X POST https://api.netatmo.com/oauth2/token \
             -d "grant_type=refresh_token" \
@@ -28,20 +28,20 @@ jobs:
           ACCESS_TOKEN=$(jq -r '.access_token' token.json)
           echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
 
-      # ✅ UTENDØRS SENSOR
-      - name: Get Netatmo data
+      # ✅ Netatmo Utendørs
+      - name: Get Netatmo
         run: |
           curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
           https://api.netatmo.com/api/getstationsdata > data.json
 
-          TEMP=$(jq -r '.body.devices[].modules[] | select(.module_name=="Utendørs") | .dashboard_data.Temperature' data.json)
-          HUM=$(jq -r '.body.devices[].modules[] | select(.module_name=="Utendørs") | .dashboard_data.Humidity' data.json)
+          TEMP=$(jq -r '.body.devices[].modules[] | select(.module_name=="Utendørs") | .dashboard_data.Temperature' data.json | head -n 1)
+          HUM=$(jq -r '.body.devices[].modules[] | select(.module_name=="Utendørs") | .dashboard_data.Humidity' data.json | head -n 1)
 
           echo "TEMP=$TEMP" >> $GITHUB_ENV
           echo "HUM=$HUM" >> $GITHUB_ENV
 
-      # ✅ ✅ FULL DAY WEATHER ENGINE
-      - name: Get forecast (daily aggregated)
+      # ✅ ✅ PERFECTE DAG-ENGINE
+      - name: Get forecast
         run: |
           curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=58.795&lon=8.79" \
           -H "User-Agent: weather-app" > forecast.json
@@ -49,42 +49,28 @@ jobs:
           jq '
           .properties.timeseries
 
-          # ✅ groepeer ALLE data per dag
+          # groepeer per dag
           | group_by(.time[0:10])
 
-          # ✅ skip vandaag → pak morgen + 2 dagen
+          # neem morgen + 2 dagen
           | .[1:4]
 
-          # ✅ bereken alles per dag
+          # bereken per dag
           | map({
               date: (.[0].time[0:10]),
 
-              # 🌡️ min/max over HELE dag
               min: (map(.data.instant.details.air_temperature) | min),
               max: (map(.data.instant.details.air_temperature) | max),
 
-              # 🌡️ gemiddelde (optioneel display)
               temp: (map(.data.instant.details.air_temperature) | add / length),
 
-              # 🌧️ regen totaal (alle uren optellen)
-              rain: (
-                map(.data.next_1_hours.details.precipitation_amount // 0)
-                | add
-              ),
+              rain: (map(.data.next_1_hours.details.precipitation_amount // 0) | add),
 
-              # 🌬️ wind gemiddeld
-              wind: (
-                map(.data.instant.details.wind_speed)
-                | add / length
-              ),
+              wind: (map(.data.instant.details.wind_speed) | add / length),
 
-              # ☀️ UV max van de dag
-              uv: (
-                map(.data.instant.details.ultraviolet_index_clear_sky // 0)
-                | max
-              ),
+              uv: (map(.data.instant.details.ultraviolet_index_clear_sky // 0) | max),
 
-              # 🌦️ BESTE ICON (meest voorkomende)
+              # meest voorkomende icoon
               icon: (
                 map(
                   .data.next_1_hours.summary.symbol_code
@@ -98,11 +84,8 @@ jobs:
           })
           ' forecast.json > forecast_out.json
 
-          echo "=== FORECAST RESULT ==="
-          cat forecast_out.json
-
-      # ✅ JSON
-      - name: Create weather.json
+      # ✅ JSON maken
+      - name: Create json
         run: |
           echo "{
             \"temperature\": $TEMP,
@@ -113,8 +96,8 @@ jobs:
 
           cat weather.json
 
-      # ✅ PUSH
-      - name: Commit & push
+      # ✅ push
+      - name: Commit
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
@@ -122,3 +105,4 @@ jobs:
           git add weather.json
           git commit -m "Update weather" || echo "No changes"
           git push
+``
