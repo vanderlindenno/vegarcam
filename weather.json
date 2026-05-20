@@ -1,7 +1,4 @@
-{
-  "temperature": 0,
-  "humidity": 0,
-  "forecast": [
+{ "temperature": 0, "humidity": 0, "forecast": [
   {
     "date": "2026-05-21",
     "min": 10.1,
@@ -9,7 +6,7 @@
     "rain": 0.3,
     "wind": 1.7708333333333333,
     "uv": 0,
-    "sun": 23,
+    "sun": 16,
     "icon": "cloudy"
   },
   {
@@ -19,7 +16,7 @@
     "rain": 0,
     "wind": 2.0875,
     "uv": 0,
-    "sun": 24,
+    "sun": 16,
     "icon": "partlycloudy_day"
   },
   {
@@ -29,8 +26,7 @@
     "rain": 0,
     "wind": 2.65,
     "uv": 0,
-    "sun": 6,
+    "sun": 3,
     "icon": "cloudy"
   }
-]
-}
+] }
