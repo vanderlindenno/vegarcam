@@ -15,8 +15,8 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      # ✅ TOKEN
-      - name: Get Netatmo token
+      # ✅ Netatmo token
+      - name: Get token
         run: |
           curl -s -X POST https://api.netatmo.com/oauth2/token \
             -d "grant_type=refresh_token" \
@@ -28,19 +28,24 @@ jobs:
           ACCESS_TOKEN=$(jq -r '.access_token' token.json)
           echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
 
-      # ✅ UTENDØRS
-      - name: Get Netatmo
+      # ✅ Utendørs sensor
+      - name: Get Netatmo data
         run: |
           curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
           https://api.netatmo.com/api/getstationsdata > data.json
 
-          TEMP=$(jq -r '.body.devices[].modules[] | select(.module_name=="Utendørs") | .dashboard_data.Temperature' data.json)
-          HUM=$(jq -r '.body.devices[].modules[] | select(.module_name=="Utendørs") | .dashboard_data.Humidity' data.json)
+          TEMP=$(jq -r '.body.devices[].modules[] | select(.module_name=="Utendørs") | .dashboard_data.Temperature' data.json | head -n 1)
+          HUM=$(jq -r '.body.devices[].modules[] | select(.module_name=="Utendørs") | .dashboard_data.Humidity' data.json | head -n 1)
+
+          if [ -z "$TEMP" ]; then
+            echo "❌ Geen Utendørs"
+            exit 1
+          fi
 
           echo "TEMP=$TEMP" >> $GITHUB_ENV
           echo "HUM=$HUM" >> $GITHUB_ENV
 
-      # ✅ 3 DAGEN PRO DATA
+      # ✅ 3 DAGEN PRO (MIDDAY SELECTIE)
       - name: Get forecast
         run: |
           curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=58.795&lon=8.79" \
@@ -52,14 +57,18 @@ jobs:
           | map({
               time: .time,
               temp: .data.instant.details.air_temperature,
-              wind: .data.instant.details.wind_speed,
-              rain: (.data.next_1_hours.details.precipitation_amount // 0),
+              min: (.data.next_6_hours.details.air_temperature_min // .data.instant.details.air_temperature),
+              max: (.data.next_6_hours.details.air_temperature_max // .data.instant.details.air_temperature),
+              wind: (.data.instant.details.wind_speed // 0),
+              rain: (.data.next_6_hours.details.precipitation_amount // 0),
               uv: (.data.instant.details.ultraviolet_index_clear_sky // 0)
           })
           ' forecast.json > forecast_out.json
 
-      # ✅ JSON
-      - name: Create json
+          cat forecast_out.json
+
+      # ✅ JSON output
+      - name: Create weather.json
         run: |
           echo "{
             \"temperature\": $TEMP,
@@ -68,11 +77,14 @@ jobs:
             \"time\": \"$(date -u '+%Y-%m-%d %H:%M:%S')\"
           }" > weather.json
 
-      # ✅ PUSH
+          cat weather.json
+
+      # ✅ push
       - name: Commit
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
+
           git add weather.json
           git commit -m "Update weather" || echo "No changes"
           git push
