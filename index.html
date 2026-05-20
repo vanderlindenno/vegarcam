@@ -14,6 +14,7 @@ body {
   color:#4a5568;
 }
 
+/* container */
 .container {
   max-width:900px;
   margin:auto;
@@ -24,72 +25,111 @@ h2 {
   margin-bottom:15px;
 }
 
-/* current */
+/* ✅ CURRENT */
 .current {
   background:#f4f6fa;
-  border-radius:20px;
+  border-radius:25px;
   padding:20px;
   margin-bottom:20px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.08);
 }
 
-.temp {
-  font-size:40px;
+.current .temp {
+  font-size:42px;
   font-weight:bold;
 }
 
-.meta {
+.current .meta {
   font-size:14px;
+  color:#6b7280;
 }
 
-/* forecast */
+.current-row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+/* ✅ FORECAST */
 .days {
   display:flex;
   gap:15px;
-  flex-wrap:wrap;
 }
 
+/* kaarten */
 .day {
   flex:1;
-  min-width:220px;
   background:#f4f6fa;
   border-radius:25px;
   padding:20px;
   text-align:center;
+  box-shadow:0 4px 12px rgba(0,0,0,0.08);
 }
 
+/* highlight eerste dag */
 .day:first-child .title {
   color:#f97316;
+  font-weight:600;
 }
 
 .title {
-  font-size:18px;
+  font-size:16px;
   margin-bottom:10px;
+  color:#6b7280;
+  text-transform:capitalize;
 }
 
 .icon {
   width:60px;
   height:60px;
+  margin:10px 0;
+}
+
+.max {
+  font-size:28px;
+  font-weight:600;
+}
+
+.min {
+  font-size:16px;
+  color:#9aa3b2;
+  margin-bottom:10px;
 }
 
 .row {
   display:flex;
   justify-content:space-between;
   font-size:13px;
+  margin:4px 0;
 }
 
-/* version */
-.version {
-  margin-top:30px;
-  font-size:12px;
-  text-align:center;
-  color:#999;
-}
+/* ✅ MOBILE */
+@media (max-width: 600px) {
 
-/* mobile */
-@media (max-width:600px) {
   .days {
     flex-direction:column;
   }
+
+  .day {
+    text-align:left;
+    display:flex;
+    align-items:center;
+    gap:15px;
+  }
+
+  .day-content {
+    flex:1;
+  }
+
+  .icon {
+    width:50px;
+    height:50px;
+  }
+
+  .row {
+    font-size:12px;
+  }
+
 }
 </style>
 
@@ -99,13 +139,13 @@ h2 {
 
 <div class="container">
 
-<h2>📍 Vegår</h2>
+  <h2>📍 Vegår</h2>
 
-<div id="current" class="current">Laster...</div>
+  <!-- ✅ CURRENT -->
+  <div id="current" class="current">Laster...</div>
 
-<div class="days" id="forecast"></div>
-
-<div class="version" id="version"></div>
+  <!-- ✅ FORECAST -->
+  <div class="days" id="forecast"></div>
 
 </div>
 
@@ -114,20 +154,28 @@ async function load() {
   const res = await fetch("weather.json");
   const data = await res.json();
 
-  // ✅ current
+  // ✅ huidige data
   const now = document.getElementById("current");
 
+  const time = new Date(data.time.replace(" ","T")+"Z")
+    .toLocaleString("no-NO",{timeZone:"Europe/Oslo"});
+
   now.innerHTML = `
-    <div>Nå</div>
-    <div class="temp">${Math.round(data.temperature)}°C</div>
-    <div class="meta">💧 ${data.humidity}%</div>
+    <div class="current-row">
+      <div>
+        <div>Nå</div>
+        <div class="temp">${Math.round(data.temperature)}°C</div>
+        <div class="meta">💧 ${data.humidity}%</div>
+        <div class="meta">${time}</div>
+      </div>
+    </div>
   `;
 
   // ✅ forecast
   const f = document.getElementById("forecast");
   f.innerHTML = "";
 
-  data.forecast.forEach((d,i) => {
+  data.forecast.forEach((d, i) => {
 
     const date = new Date(d.date);
 
@@ -142,23 +190,23 @@ async function load() {
 
     f.innerHTML += `
       <div class="day">
-        <div class="title">${dag}</div>
-        <img src="${iconUrl}" class="Math.round(d.max)}°C</b></div>
-        <div>${Math.round(d.min)}°C</div>
 
-        <div class="row">🌧️ ${d.rain.toFixed(1)} mm</div>
-        <div class="row">🌬️ ${d.wind.toFixed(1)} m/s</div>
-        <div class="row">☀️ ${sunHours} h</div>
-        <div class="row">UV ${d.uv.toFixed(0)}</div>
+        <img src="${iconUrl}" class="s="day-content">
+          <div class="title">${dag}</div>
+
+          <div class="max">${Math.round(d.max)}°C</div>
+          <div class="min">${Math.round(d.min)}°C</div>
+
+          <div class="row"><span>🌧️</span><span>${d.rain.toFixed(1)} mm</span></div>
+          <div class="row"><span>🌬️</span><span>${d.wind.toFixed(1)} m/s</span></div>
+          <div class="row"><span>☀️</span><span>${sunHours} h</span></div>
+          <div class="row"><span>UV</span><span>${d.uv.toFixed(0)}</span></div>
+        </div>
+
       </div>
     `;
   });
 
-  // ✅ VERSION (timestamp)
-  const v = document.getElementById("version");
-  const version = new Date().toISOString();
-
-  v.innerText = "Versjon: " + version;
 }
 
 load();
