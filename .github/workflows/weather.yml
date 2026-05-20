@@ -15,7 +15,7 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      # ✅ Token ophalen
+      # ✅ TOKEN
       - name: Get Netatmo token
         run: |
           curl -s -X POST https://api.netatmo.com/oauth2/token \
@@ -28,8 +28,8 @@ jobs:
           ACCESS_TOKEN=$(jq -r '.access_token' token.json)
           echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
 
-      # ✅ Netatmo data
-      - name: Get Netatmo data
+      # ✅ NETATMO
+      - name: Get data
         run: |
           curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
           https://api.netatmo.com/api/getstationsdata > data.json
@@ -40,28 +40,34 @@ jobs:
           echo "TEMP=$TEMP" >> $GITHUB_ENV
           echo "HUM=$HUM" >> $GITHUB_ENV
 
-      # ✅ Forecast (3 dagen)
+      # ✅ FORECAST FIXED
       - name: Get forecast
         run: |
           curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=58.795&lon=8.79" \
           -H "User-Agent: weather-app" > forecast.json
 
-          jq '[.properties.timeseries[0,4,8,12,16,20] 
-               | {time: .time, temp: .data.instant.details.air_temperature}]' \
-               forecast.json > forecast_out.json
+          jq '[.properties.timeseries
+              | .[0:24:4]
+              | .[]
+              | {time: .time, temp: .data.instant.details.air_temperature}]' \
+              forecast.json > forecast_out.json
 
-      # ✅ JSON maken (met juiste tijdzone)
-      - name: Create weather.json
+          cat forecast_out.json
+
+      # ✅ JSON
+      - name: Create json
         run: |
           echo "{
             \"temperature\": $TEMP,
             \"humidity\": $HUM,
             \"forecast\": $(cat forecast_out.json),
-            \"time\": \"$(TZ='Europe/Oslo' date '+%Y-%m-%d %H:%M:%S')\"
+            \"time\": \"$(date -u '+%Y-%m-%d %H:%M:%S')\"
           }" > weather.json
 
-      # ✅ Push
-      - name: Commit and push
+          cat weather.json
+
+      # ✅ PUSH
+      - name: Commit
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
