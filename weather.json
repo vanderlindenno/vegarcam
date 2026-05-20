@@ -1,30 +1,30 @@
 { "temperature": 0, "humidity": 0, "forecast": [
   {
-    "date": "2026-05-21",
-    "min": 10.3,
-    "max": 19.2,
-    "rain": 0,
-    "wind": 1.8666666666666665,
-    "uv": 0,
-    "sun": 16,
-    "icon": "cloudy"
-  },
-  {
     "date": "2026-05-22",
     "min": 7.8,
-    "max": 21.7,
+    "max": 22.0,
     "rain": 0,
-    "wind": 2.0750000000000006,
+    "wind": 2.016666666666666,
     "uv": 0,
     "sun": 16,
     "icon": "partlycloudy_day"
   },
   {
     "date": "2026-05-23",
-    "min": 13.1,
+    "min": 12.7,
     "max": 21.6,
     "rain": 0,
-    "wind": 2.6833333333333336,
+    "wind": 2,
+    "uv": 0,
+    "sun": 5,
+    "icon": "cloudy"
+  },
+  {
+    "date": "2026-05-24",
+    "min": 11.8,
+    "max": 22.6,
+    "rain": 0,
+    "wind": 3.3499999999999996,
     "uv": 0,
     "sun": 3,
     "icon": "cloudy"
