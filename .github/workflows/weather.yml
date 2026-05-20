@@ -15,7 +15,7 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      # ✅ Netatmo token
+      # ✅ NETATMO TOKEN
       - name: Get token
         run: |
           curl -s -X POST https://api.netatmo.com/oauth2/token \
@@ -28,7 +28,7 @@ jobs:
           ACCESS_TOKEN=$(jq -r '.access_token' token.json)
           echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
 
-      # ✅ Netatmo data
+      # ✅ NETATMO DATA
       - name: Get Netatmo
         run: |
           curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
@@ -40,7 +40,7 @@ jobs:
           echo "TEMP=$TEMP" >> $GITHUB_ENV
           echo "HUM=$HUM" >> $GITHUB_ENV
 
-      # ✅ Forecast (FIXED DAG LOGICA)
+      # ✅ MET FORECAST + ECHTE ZONUREN
       - name: Get forecast
         run: |
           curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=58.795&lon=8.79" \
@@ -49,7 +49,7 @@ jobs:
           jq '
           .properties.timeseries
 
-          # ✅ lokale dag berekenen (Oslo)
+          # ✅ lokale dag (Oslo)
           | map(. + {
               local_date: (
                 (.time | fromdateiso8601 + 7200)
@@ -57,10 +57,10 @@ jobs:
               )
           })
 
-          # ✅ groepeer per dag
+          # ✅ groep per dag
           | group_by(.local_date)
 
-          # ✅ skip vandaag → neem volgende 3
+          # ✅ morgen + 2 dagen
           | .[1:4]
 
           | map({
@@ -69,14 +69,21 @@ jobs:
               min: (map(.data.instant.details.air_temperature) | min),
               max: (map(.data.instant.details.air_temperature) | max),
 
-              temp: (map(.data.instant.details.air_temperature) | add / length),
-
               rain: (map(.data.next_1_hours.details.precipitation_amount // 0) | add),
 
               wind: (map(.data.instant.details.wind_speed) | add / length),
 
               uv: (map(.data.instant.details.ultraviolet_index_clear_sky // 0) | max),
 
+              # ✅ ECHTE ZONUREN
+              sun: (
+                map(
+                  if (.data.next_1_hours.details.precipitation_amount // 0) == 0
+                  then 1 else 0 end
+                ) | add
+              ),
+
+              # ✅ beste icon
               icon: (
                 map(
                   .data.next_1_hours.summary.symbol_code
@@ -90,8 +97,8 @@ jobs:
           })
           ' forecast.json > forecast_out.json
 
-      # ✅ JSON output
-      - name: Create json
+      # ✅ JSON OUTPUT
+      - name: Create JSON
         run: |
           echo "{
             \"temperature\": $TEMP,
@@ -102,7 +109,7 @@ jobs:
 
           cat weather.json
 
-      # ✅ commit
+      # ✅ COMMIT
       - name: Commit
         run: |
           git config user.name "github-actions"
