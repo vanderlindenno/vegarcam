@@ -1,9 +1,9 @@
 name: Update Weather
 
 on:
-  workflow_dispatch:
   schedule:
     - cron: "*/15 * * * *"
+  workflow_dispatch:
 
 jobs:
   weather:
@@ -15,30 +15,40 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Forecast
+      - name: Get forecast
         run: |
           curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=58.795&lon=8.79" \
           -H "User-Agent: weather-app" > forecast.json
 
           jq '
           .properties.timeseries
+
           | map(. + {
-              d: ((.time | fromdateiso8601 + 7200) | strftime("%Y-%m-%d"))
+              d: ((.time | fromdateiso8601 + 7200) | strftime("%Y-%m-%d")),
+              hour: ((.time | fromdateiso8601 + 7200) | strftime("%H") | tonumber)
           })
+
           | group_by(.d)
           | .[1:4]
+
           | map({
+
               date: .[0].d,
+
               min: (map(.data.instant.details.air_temperature) | min),
               max: (map(.data.instant.details.air_temperature) | max),
+
               rain: (map(.data.next_1_hours.details.precipitation_amount // 0) | add),
+
               wind: (map(.data.instant.details.wind_speed) | add / length),
+
               uv: (map(.data.instant.details.ultraviolet_index_clear_sky // 0) | max),
 
-              # ✅ FIXED ZONUREN
+              # ✅ ALLEEN DAGUREN (06–21)
               sun: (
                 map(
-                  if (.data.next_1_hours.details.precipitation_amount // 0) == 0
+                  if (.hour >= 6 and .hour <= 21
+                  and (.data.next_1_hours.details.precipitation_amount // 0) == 0)
                   then 1 else 0 end
                 ) | add
               ),
@@ -49,16 +59,13 @@ jobs:
                 | max_by(length)
                 | .[0]
               )
+
           })
           ' forecast.json > forecast_out.json
 
       - name: Create JSON
         run: |
-          echo "{
-            \"temperature\": 0,
-            \"humidity\": 0,
-            \"forecast\": $(cat forecast_out.json)
-          }" > weather.json
+          echo "{ \"temperature\": 0, \"humidity\": 0, \"forecast\": $(cat forecast_out.json) }" > weather.json
 
       - name: Commit
         run: |
