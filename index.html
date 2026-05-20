@@ -7,7 +7,7 @@
 <style>
 body {
   margin:0;
-  font-family:-apple-system, sans-serif;
+  font-family:-apple-system,sans-serif;
   background: linear-gradient(180deg,#1e3c72,#2a5298,#4facfe);
   color:white;
 }
@@ -27,13 +27,14 @@ body {
   flex:1;
   background: rgba(255,255,255,0.2);
   border-radius:15px;
-  padding:12px;
+  padding:10px;
   text-align:center;
 }
 
 .big { font-size:42px; }
-.icon { font-size:30px; }
+.icon { font-size:28px; }
 .small { font-size:12px; opacity:0.8; }
+.error { color: #ffdddd; }
 </style>
 </head>
 
@@ -43,7 +44,7 @@ body {
 
 <h2>📍 Vegår</h2>
 
-<div class="card" id="current"></div>
+<div class="card" id="current">Laster…</div>
 
 <div class="card">
   <b>3 DAGERS VARSEL</b>
@@ -54,22 +55,85 @@ body {
 
 <script>
 function icon(t){
-  if(t < 0) return "❄️";
+  if(t <= 0) return "❄️";
   if(t < 10) return "🌥️";
   if(t < 20) return "⛅";
   return "☀️";
 }
 
 async function load() {
-  const res = await fetch("weather.json");
-  const data = await res.json();
+  try {
+    const res = await fetch("weather.json");
+    const data = await res.json();
 
-  const time = new Date(data.time.replace(" ","T")+"Z")
-    .toLocaleString("no-NO",{timeZone:"Europe/Oslo"});
+    console.log("DATA:", data);
 
-  // ✅ CURRENT
-  document.getElementById("current").innerHTML = `
-    <div>NÅ</div>
-    <div class="icon">${icon(data.temperature)}</div>
-    <div class="big">${data.temperature}°C</div>
-    💧 ${data.humidity}%<br>
+    // ✅ TIME FIX
+    const time = new Date(data.time.replace(" ","T")+"Z")
+      .toLocaleString("no-NO",{timeZone:"Europe/Oslo"});
+
+    // ✅ CURRENT
+    document.getElementById("current").innerHTML = `
+      <div>NÅ</div>
+      <div class="icon">${icon(data.temperature)}</div>
+      <div class="big">${data.temperature}°C</div>
+      💧 ${data.humidity}%<br>
+      <div class="small">${time}</div>
+    `;
+
+    const f = document.getElementById("forecast");
+
+    // ✅ safety check
+    if (!data.forecast || data.forecast.length === 0) {
+      f.innerHTML = "<div class='error'>❌ Ingen forecast data</div>";
+      return;
+    }
+
+    f.innerHTML = "";
+
+    data.forecast.forEach(d => {
+
+      const dt = new Date(d.time);
+
+      const dag = dt.toLocaleDateString("no-NO", {
+        weekday:"short",
+        day:"numeric",
+        month:"short",
+        timeZone:"Europe/Oslo"
+      });
+
+      // ✅ veilige waarden (geen crash)
+      const max = (d.max ?? d.temp ?? 0).toFixed(1);
+      const min = (d.min ?? d.temp ?? 0).toFixed(1);
+      const rain = (d.rain ?? 0);
+      const wind = (d.wind ?? 0);
+      const uv = (d.uv ?? 0);
+
+      f.innerHTML += `
+        <div class="day">
+          <div>${dag}</div>
+
+          <div class="icon">${icon(d.temp)}</div>
+
+          <div>${max}°</div>
+          <div class="small">${min}°</div>
+
+          <div class="small">🌧️ ${rain} mm</div>
+          <div class="small">🌬️ ${wind} m/s</div>
+          <div class="small">☀️ UV ${uv}</div>
+        </div>
+      `;
+    });
+
+  } catch (err) {
+    console.error("ERROR:", err);
+    document.getElementById("forecast").innerHTML =
+      "<div class='error'>❌ Fout bij laden</div>";
+  }
+}
+
+load();
+</script>
+
+</body>
+</html>
