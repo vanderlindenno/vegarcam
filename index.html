@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="no">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <title>Vær Vegår</title>
 
 <style>
@@ -22,66 +22,60 @@ h2 {
   margin-bottom:20px;
 }
 
-/* layout */
 .days {
   display:flex;
   gap:20px;
 }
 
+/* ✅ CARD */
 .day {
   flex:1;
   background:#f4f6fa;
-  border-radius:25px;
-  padding:20px;
+  border-radius:30px;
+  padding:25px;
   text-align:center;
-  box-shadow:0 4px 12px rgba(0,0,0,0.08);
+  box-shadow:0 6px 16px rgba(0,0,0,0.08);
 }
 
-/* eerste dag highlight */
+/* eerste dag oranje */
 .day:first-child .title {
   color:#f97316;
-  font-weight:bold;
+  font-weight:600;
 }
 
-/* tekst */
+/* titel */
 .title {
   font-size:18px;
-  margin-bottom:10px;
+  margin-bottom:15px;
   color:#6b7280;
   text-transform:capitalize;
 }
 
+/* icoon */
 .icon {
-  width:70px;
-  height:70px;
-  margin:10px 0;
+  width:80px;
+  height:80px;
+  margin:15px 0;
 }
 
+/* temperaturen */
 .max {
-  font-size:34px;
-  font-weight:bold;
+  font-size:36px;
+  font-weight:600;
 }
 
 .min {
   font-size:18px;
   color:#9aa3b2;
-  margin-bottom:15px;
+  margin-bottom:20px;
 }
 
-/* data rows */
+/* rijen */
 .row {
   display:flex;
   justify-content:space-between;
-  margin:6px 0;
+  margin:8px 0;
   font-size:14px;
-}
-
-.left {
-  opacity:0.7;
-}
-
-.right {
-  font-weight:500;
 }
 </style>
 
@@ -90,8 +84,11 @@ h2 {
 <body>
 
 <div class="container">
-  <h2>📍 Vegår</h2>
-  <div class="days" id="forecast"></div>
+
+<h2>📍 Vegår</h2>
+
+<div class="days" id="forecast"></div>
+
 </div>
 
 <script>
@@ -99,13 +96,12 @@ async function load() {
   const res = await fetch("weather.json");
   const data = await res.json();
 
-  const f = document.getElementById("forecast");
-  f.innerHTML = "";
+  const container = document.getElementById("forecast");
+  container.innerHTML = "";
 
   data.forecast.forEach((d, i) => {
 
     const date = new Date(d.date);
-
     const dag = date.toLocaleDateString("no-NO", {
       weekday: "long",
       timeZone: "Europe/Oslo"
@@ -113,39 +109,29 @@ async function load() {
 
     const iconUrl = `https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${d.icon}.svg`;
 
-    // simpele schatting zonuren
+    // fallback als icon faalt
+    const safeIcon = d.icon ? iconUrl : "https://cdn.jsdelivr.net/gh/metno/weathericons/svg/cloudy.svg";
+
     const sunHours = Math.max(0, 10 - d.rain).toFixed(1);
 
-    f.innerHTML += `
+    // ✅ ALLES BINNEN 1 CARD (dit fix jouw probleem!)
+    const html = `
       <div class="day">
 
         <div class="title">${dag}</div>
 
-        <img src="${iconUrl}" class="s="max">${Math.round(d.max)}°C</div>
+        <img src="${safeIcon}" class="iconax">${Math.round(d.max)}°C</div>
         <div class="min">${Math.round(d.min)}°C</div>
 
-        <div class="row">
-          <span class="left">🌧️</span>
-          <span class="right">${d.rain.toFixed(1)} mm</span>
-        </div>
-
-        <div class="row">
-          <span class="left">🌬️</span>
-          <span class="right">${d.wind.toFixed(1)} m/s</span>
-        </div>
-
-        <div class="row">
-          <span class="left">☀️</span>
-          <span class="right">${sunHours} h</span>
-        </div>
-
-        <div class="row">
-          <span class="left">UV</span>
-          <span class="right">${d.uv.toFixed(0)}</span>
-        </div>
+        <div class="row">🌧️ <span>${d.rain.toFixed(1)} mm</span></div>
+        <div class="row">🌬️ <span>${d.wind.toFixed(1)} m/s</span></div>
+        <div class="row">☀️ <span>${sunHours} h</span></div>
+        <div class="row">UV <span>${d.uv.toFixed(0)}</span></div>
 
       </div>
     `;
+
+    container.innerHTML += html;
   });
 }
 
