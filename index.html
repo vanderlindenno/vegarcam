@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <title>Vær Vegår</title>
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -22,7 +21,7 @@ body {
 
 h2 { margin-bottom:15px; }
 
-/* ✅ CURRENT */
+/* CURRENT */
 .current {
   background:#f4f6fa;
   border-radius:25px;
@@ -30,12 +29,11 @@ h2 { margin-bottom:15px; }
   margin-bottom:20px;
   display:flex;
   align-items:center;
-  gap:15px;
+  gap:20px;
 }
 
 .current img {
   width:60px;
-  height:60px;
 }
 
 .temp {
@@ -43,13 +41,12 @@ h2 { margin-bottom:15px; }
   font-weight:bold;
 }
 
-/* ✅ FORECAST */
+/* FORECAST */
 .days {
   display:flex;
   gap:15px;
 }
 
-/* kaart */
 .day {
   flex:1;
   background:#f4f6fa;
@@ -58,50 +55,44 @@ h2 { margin-bottom:15px; }
   box-shadow:0 4px 12px rgba(0,0,0,0.08);
 }
 
-/* inhoud */
 .day-inner {
   display:flex;
   gap:15px;
 }
 
-/* icoon kolom */
+/* icon kolom */
 .icon-col {
   display:flex;
   flex-direction:column;
   align-items:center;
-  gap:10px;
+  gap:8px;
 }
 
 .icon-col img {
-  width:40px;
+  width:28px;
 }
 
-/* data kolom */
+/* data */
 .data-col {
   flex:1;
 }
 
 .title {
-  font-size:16px;
-  margin-bottom:10px;
   font-weight:500;
-  text-transform:capitalize;
+  margin-bottom:8px;
 }
 
 .day:first-child .title {
   color:#f97316;
 }
 
-/* temps */
 .max { font-size:26px; font-weight:600; }
-.min { color:#9aa3b2; margin-bottom:10px; }
+.min { color:#9aa3b2; margin-bottom:8px; }
 
-/* rows */
 .row {
   display:flex;
   justify-content:space-between;
   font-size:13px;
-  margin:3px 0;
 }
 
 /* version */
@@ -128,7 +119,7 @@ h2 { margin-bottom:15px; }
 
 <div id="current" class="current">Laster...</div>
 
-<div class="days" id="forecast"></div>
+<div id="forecast" class="days"></div>
 
 <div id="version" class="version"></div>
 
@@ -137,12 +128,24 @@ h2 { margin-bottom:15px; }
 <script>
 const VERSION = new Date().toISOString();
 
+/* ✅ ICON FIX */
+function mapIcon(i) {
+  if (!i) return "cloudy";
+  if (i.includes("clearsky")) return "clearsky_day";
+  if (i.includes("fair")) return "fair_day";
+  if (i.includes("partlycloudy")) return "partlycloudy_day";
+  if (i.includes("rain")) return "rain";
+  if (i.includes("snow")) return "snow";
+  if (i.includes("fog")) return "fog";
+  return "cloudy";
+}
+
 async function load() {
   const res = await fetch("weather.json");
   const data = await res.json();
 
-  // ✅ CURRENT MET ICOON
-  const currentIcon = data.forecast?.[0]?.icon || "cloudy";
+  /* ✅ CURRENT */
+  const currentIcon = mapIcon(data.forecast?.[0]?.icon);
 
   document.getElementById("current").innerHTML = `
     <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${currentIcon}.svg
@@ -152,27 +155,25 @@ async function load() {
     </div>
   `;
 
-  // ✅ FORECAST
+  /* ✅ FORECAST */
   const f = document.getElementById("forecast");
   f.innerHTML = "";
 
   data.forecast.forEach(d => {
 
     const dag = new Date(d.date)
-      .toLocaleDateString("no-NO", { weekday:"long", timeZone:"Europe/Oslo" });
+      .toLocaleDateString("no-NO",{weekday:"long", timeZone:"Europe/Oslo"});
 
-    const icon = d.icon || "cloudy";
+    const icon = mapIcon(d.icon);
 
     f.innerHTML += `
       <div class="day">
 
         <div class="day-inner">
 
-          <!-- ✅ icon kolom links -->
           <div class="icon-col">
-            <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${icon}.      <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/r          <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/wind.svg   <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/clearsky_day     </div>
+            <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${icon}.svg   <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/rain.svg   <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/wind       <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/clearsky_day.svg </div>
 
-          <!-- ✅ data rechts -->
           <div class="data-col">
 
             <div class="title">${dag}</div>
@@ -182,8 +183,8 @@ async function load() {
 
             <div class="row">Nedbør <span>${d.rain.toFixed(1)} mm</span></div>
             <div class="row">Vind <span>${d.wind.toFixed(1)} m/s</span></div>
-            <div class="row">Soltimer <span>${d.sun || "-"} h</span></div>
-            <div class="row">UV <span>${d.uv.toFixed(0)}</span></div>
+            <div class="row">Soltimer <span>${d.sun} h</span></div>
+            <div class="row">UV <span>${d.uv}</span></div>
 
           </div>
 
