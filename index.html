@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="no">
 <head>
 <meta charset="UTF-8">
-<title>Weer Vegår</title>
+<title>Vær Vegår</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -10,7 +10,7 @@
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  background: linear-gradient(180deg, #1e3c72, #2a5298, #3ba7f0);
+  background: linear-gradient(180deg, #1e3c72, #2a5298, #4facfe);
   color: white;
 }
 
@@ -52,7 +52,7 @@ body {
   opacity: 0.7;
 }
 
-.forecast-row {
+.row {
   display: flex;
   justify-content: space-between;
   margin-top: 10px;
@@ -66,73 +66,77 @@ body {
 
   <div class="location">📍 Vegår</div>
 
-  <div class="card" id="current">Laden...</div>
-  <div class="card" id="forecast">Laden...</div>
+  <div class="card" id="current">Laster...</div>
+  <div class="card" id="forecast">Laster...</div>
 
   <div class="card">
-    <div class="title">📊 Temperatuur verloop</div>
+    <div class="title">📊 Temperatur</div>
     <canvas id="chart"></canvas>
   </div>
 
 </div>
 
 <script>
-function getIcon(temp) {
+function icon(temp) {
   if (temp <= 0) return "❄️";
   if (temp < 10) return "🌥️";
   if (temp < 20) return "⛅";
   return "☀️";
 }
 
-async function loadWeather() {
+async function load() {
   const res = await fetch("weather.json");
   const data = await res.json();
 
-  const iconNow = getIcon(data.temperature);
+  // ✅ FIX TIJD (correct parsed + Oslo)
+  const time = new Date(data.time.replace(" ", "T") + "Z")
+    .toLocaleString("no-NO", {
+      timeZone: "Europe/Oslo",
+      hour: "2-digit",
+      minute: "2-digit",
+      day: "numeric",
+      month: "numeric"
+    });
 
-  // ✅ juiste lokale tijd
-  const localTime = new Date(data.time).toLocaleString("nl-NL", {
-    timeZone: "Europe/Oslo",
-    hour: "2-digit",
-    minute: "2-digit",
-    day: "numeric",
-    month: "numeric"
-  });
-
-  // CURRENT
+  // ✅ NÅ
   document.getElementById("current").innerHTML = `
-    <div class="title">NU</div>
-    <div class="icon">${iconNow}</div>
+    <div class="title">NÅ</div>
+    <div class="icon">${icon(data.temperature)}</div>
     <div class="temp">${data.temperature}°C</div>
     💧 ${data.humidity}%<br>
-    <div class="small">Update: ${localTime}</div>
+    <div class="small">Oppdatert: ${time}</div>
   `;
 
-  // FORECAST 3 DAGEN
-  let html = `<div class="title">FORECAST 3 DAGEN</div>`;
+  // ✅ FORECAST (check fix)
+  const div = document.getElementById("forecast");
+
+  if (!data.forecast || data.forecast.length === 0) {
+    div.innerHTML = "❌ Ingen værdata";
+    return;
+  }
+
+  let html = `<div class="title">3 DAGER</div>`;
 
   data.forecast.forEach(f => {
-    const icon = getIcon(f.temp);
-
-    const time = new Date(f.time).toLocaleString("nl-NL", {
+    const t = new Date(f.time).toLocaleString("no-NO", {
       timeZone: "Europe/Oslo",
       weekday: "short",
       hour: "2-digit"
     });
 
     html += `
-      <div class="forecast-row">
-        <div>${icon}</div>
-        <div>${time}</div>
+      <div class="row">
+        <div>${icon(f.temp)}</div>
+        <div>${t}</div>
         <div>${f.temp}°C</div>
       </div>
     `;
   });
 
-  document.getElementById("forecast").innerHTML = html;
+  div.innerHTML = html;
 
-  // GRAFIEK
-  const ctx = document.getElementById("chart").getContext("2d");
+  // ✅ GRAF
+  const ctx = document.getElementById("chart");
 
   const labels = data.forecast.map(f =>
     new Date(f.time).getHours() + ":00"
@@ -156,7 +160,7 @@ async function loadWeather() {
   });
 }
 
-loadWeather();
+load();
 </script>
 
 </body>
