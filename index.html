@@ -8,45 +8,72 @@
 body {
   margin:0;
   font-family:-apple-system, sans-serif;
-  background: linear-gradient(180deg,#1e3c72,#2a5298,#4facfe);
-  color:white;
+  background:#e9edf3;
+  color:#4a5568;
 }
 
 .container {
-  max-width:520px;
+  max-width:700px;
   margin:auto;
   padding:20px;
 }
 
-.card {
-  background: rgba(255,255,255,0.12);
-  border-radius:20px;
-  padding:20px;
-  margin-bottom:20px;
-}
-
 .days {
   display:flex;
-  gap:10px;
+  gap:20px;
 }
 
 .day {
   flex:1;
-  background: rgba(255,255,255,0.18);
-  border-radius:15px;
-  padding:12px;
+  background:#f4f6fa;
+  border-radius:25px;
+  padding:20px;
   text-align:center;
+  box-shadow:0 2px 6px rgba(0,0,0,0.05);
 }
 
-.big { font-size:42px; }
-.icon { width:50px; height:50px; }
-.small { font-size:12px; opacity:0.8; }
-.label { font-size:13px; margin-bottom:5px; }
+.day:first-child .title {
+  color:#f97316; /* oranje eerste dag */
+}
+
+.title {
+  font-size:18px;
+  margin-bottom:10px;
+  color:#67748a;
+}
+
+.icon {
+  width:70px;
+  height:70px;
+  margin:10px 0;
+}
+
+.max {
+  font-size:34px;
+  font-weight:bold;
+}
+
+.min {
+  font-size:18px;
+  color:#8a94a6;
+  margin-bottom:15px;
+}
 
 .row {
   display:flex;
   justify-content:space-between;
-  font-size:12px;
+  align-items:center;
+  margin:6px 0;
+  font-size:14px;
+}
+
+.row span {
+  font-weight:500;
+}
+
+.icon-small {
+  width:16px;
+  opacity:0.7;
 }
 </style>
 
@@ -57,12 +84,7 @@ body {
 
 <h2>📍 Vegår</h2>
 
-<div class="card" id="current">Laster...</div>
-
-<div class="card">
-  <b>3 DAGERS VARSEL</b>
-  <div class="days" id="forecast"></div>
-</div>
+<div class="days" id="forecast"></div>
 
 </div>
 
@@ -71,42 +93,46 @@ async function load() {
   const res = await fetch("weather.json");
   const data = await res.json();
 
-  const time = new Date(data.time.replace(" ","T")+"Z")
-    .toLocaleString("no-NO",{timeZone:"Europe/Oslo"});
-
-  // ✅ CURRENT
-  document.getElementById("current").innerHTML = `
-    <div class="label">NÅ</div>
-    <div class="big">${data.temperature}°C</div>
-    💧 ${data.humidity}%<br>
-    <div class="small">${time}</div>
-  `;
-
   const f = document.getElementById("forecast");
   f.innerHTML = "";
 
-  data.forecast.forEach(d => {
+  data.forecast.forEach((d,i) => {
 
     const date = new Date(d.date);
 
     const dag = date.toLocaleDateString("no-NO", {
-      weekday:"short", day:"numeric", month:"short",
+      weekday:"long",
       timeZone:"Europe/Oslo"
     });
 
     const iconUrl = `https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${d.icon}.svg`;
 
+    // simpele zonuren schatting (bonus)
+    const sunHours = Math.max(0, 10 - d.rain).toFixed(1);
+
     f.innerHTML += `
       <div class="day">
 
-        <div class="label">${dag}</div>
+        <div class="title">${dag}</div>
 
-        <img src="${iconUrl}" class="iconax.toFixed(1)}°</b></div>
-        <div class="small">${d.min.toFixed(1)}°</div>
+        <img src="${iconUrl}" class="iconax">${d.max.toFixed(0)}°C</div>
+        <div class="min">${d.min.toFixed(0)}°C</div>
 
-        <div class="row">🌧️ <span>${d.rain.toFixed(1)} mm</span></div>
-        <div class="row">🌬️ <span>${d.wind.toFixed(1)} m/s</span></div>
-        <div class="row">☀️ <span>UV ${d.uv.toFixed(1)}</span></div>
+        <div class="row">
+          🌧️ <span>${d.rain.toFixed(1)} mm</span>
+        </div>
+
+        <div class="row">
+          🌬️ <span>${d.wind.toFixed(1)} m/s</span>
+        </div>
+
+        <div class="row">
+          ☀️ <span>${sunHours} h</span>
+        </div>
+
+        <div class="row">
+          UV <span>${d.uv.toFixed(0)}</span>
+        </div>
 
       </div>
     `;
