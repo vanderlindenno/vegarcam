@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="no">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>Vær Vegår</title>
 
 <style>
@@ -22,6 +22,7 @@ h2 {
   margin-bottom:20px;
 }
 
+/* layout */
 .days {
   display:flex;
   gap:20px;
@@ -36,15 +37,18 @@ h2 {
   box-shadow:0 4px 12px rgba(0,0,0,0.08);
 }
 
+/* eerste dag highlight */
 .day:first-child .title {
   color:#f97316;
   font-weight:bold;
 }
 
+/* tekst */
 .title {
   font-size:18px;
-  margin-bottom:12px;
+  margin-bottom:10px;
   color:#6b7280;
+  text-transform:capitalize;
 }
 
 .icon {
@@ -54,7 +58,7 @@ h2 {
 }
 
 .max {
-  font-size:32px;
+  font-size:34px;
   font-weight:bold;
 }
 
@@ -64,6 +68,7 @@ h2 {
   margin-bottom:15px;
 }
 
+/* data rows */
 .row {
   display:flex;
   justify-content:space-between;
@@ -71,6 +76,13 @@ h2 {
   font-size:14px;
 }
 
+.left {
+  opacity:0.7;
+}
+
+.right {
+  font-weight:500;
+}
 </style>
 
 </head>
@@ -78,11 +90,8 @@ h2 {
 <body>
 
 <div class="container">
-
-<h2>📍 Vegår</h2>
-
-<div class="days" id="forecast"></div>
-
+  <h2>📍 Vegår</h2>
+  <div class="days" id="forecast"></div>
 </div>
 
 <script>
@@ -98,12 +107,13 @@ async function load() {
     const date = new Date(d.date);
 
     const dag = date.toLocaleDateString("no-NO", {
-      weekday:"long",
-      timeZone:"Europe/Oslo"
+      weekday: "long",
+      timeZone: "Europe/Oslo"
     });
 
     const iconUrl = `https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${d.icon}.svg`;
 
+    // simpele schatting zonuren
     const sunHours = Math.max(0, 10 - d.rain).toFixed(1);
 
     f.innerHTML += `
@@ -111,27 +121,27 @@ async function load() {
 
         <div class="title">${dag}</div>
 
-        <img src="${iconUrl}"div class="max">${Math.round(d.max)}°C</div>
+        <img src="${iconUrl}" class="s="max">${Math.round(d.max)}°C</div>
         <div class="min">${Math.round(d.min)}°C</div>
 
         <div class="row">
-          <span>🌧️</span>
-          <span>${d.rain.toFixed(1)} mm</span>
+          <span class="left">🌧️</span>
+          <span class="right">${d.rain.toFixed(1)} mm</span>
         </div>
 
         <div class="row">
-          <span>🌬️</span>
-          <span>${d.wind.toFixed(1)} m/s</span>
+          <span class="left">🌬️</span>
+          <span class="right">${d.wind.toFixed(1)} m/s</span>
         </div>
 
         <div class="row">
-          <span>☀️</span>
-          <span>${sunHours} h</span>
+          <span class="left">☀️</span>
+          <span class="right">${sunHours} h</span>
         </div>
 
         <div class="row">
-          <span>UV</span>
-          <span>${d.uv.toFixed(0)}</span>
+          <span class="left">UV</span>
+          <span class="right">${d.uv.toFixed(0)}</span>
         </div>
 
       </div>
