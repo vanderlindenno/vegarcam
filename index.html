@@ -7,7 +7,7 @@
 <style>
 body {
   margin:0;
-  font-family:-apple-system;
+  font-family:-apple-system, sans-serif;
   background: linear-gradient(180deg,#1e3c72,#2a5298,#4facfe);
   color:white;
 }
@@ -21,10 +21,7 @@ body {
   margin-bottom:20px;
 }
 
-.days {
-  display:flex;
-  gap:10px;
-}
+.days { display:flex; gap:10px; }
 
 .day {
   flex:1;
@@ -36,7 +33,7 @@ body {
 
 .big { font-size:42px; }
 .icon { font-size:30px; }
-.small { font-size:12px; opacity:0.8; margin-top:3px; }
+.small { font-size:12px; opacity:0.8; }
 </style>
 </head>
 
@@ -63,56 +60,16 @@ function icon(t){
   return "☀️";
 }
 
-async function load(){
- const res = await fetch("weather.json");
- const data = await res.json();
+async function load() {
+  const res = await fetch("weather.json");
+  const data = await res.json();
 
- const time = new Date(data.time.replace(" ","T")+"Z")
-   .toLocaleString("no-NO",{timeZone:"Europe/Oslo"});
+  const time = new Date(data.time.replace(" ","T")+"Z")
+    .toLocaleString("no-NO",{timeZone:"Europe/Oslo"});
 
- // ✅ current
- document.getElementById("current").innerHTML = `
-   <div>NÅ</div>
-   <div class="icon">${icon(data.temperature)}</div>
-   <div class="big">${data.temperature}°C</div>
-   💧 ${data.humidity}%<br>
-   <div class="small">${time}</div>
- `;
-
- const f = document.getElementById("forecast");
- f.innerHTML = "";
-
- data.forecast.forEach(d => {
-
-   const dt = new Date(d.time);
-
-   const dag = dt.toLocaleDateString("no-NO", {
-     weekday:"short",
-     day:"numeric",
-     month:"short",
-     timeZone:"Europe/Oslo"
-   });
-
-   f.innerHTML += `
-     <div class="day">
-       <div>${dag}</div>
-
-       <div class="icon">${icon(d.temp)}</div>
-
-       <div>${d.max.toFixed(1)}°</div>
-       <div class="small">${d.min.toFixed(1)}°</div>
-
-       <div class="small">🌧️ ${d.rain} mm</div>
-       <div class="small">🌬️ ${d.wind} m/s</div>
-       <div class="small">☀️ UV ${d.uv}</div>
-     </div>
-   `;
- });
-}
-
-load();
-</script>
-
-</body>
-</html>
-``
+  // ✅ CURRENT
+  document.getElementById("current").innerHTML = `
+    <div>NÅ</div>
+    <div class="icon">${icon(data.temperature)}</div>
+    <div class="big">${data.temperature}°C</div>
+    💧 ${data.humidity}%<br>
