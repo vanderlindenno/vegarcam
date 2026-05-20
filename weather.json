@@ -1,5 +1,7 @@
 {
-  "temperature": 20.5,
-  "humidity": 46,
-  "time": "2026-05-18 05:50"
+  "temperature": 22.6,
+  "humidity": 44,
+  "forecast_temp": 15.5,
+  "forecast_time": "2026-05-20T10:00:00Z",
+  "time": "2026-05-20 10:47"
 }
