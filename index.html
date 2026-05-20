@@ -12,11 +12,7 @@ body {
   color: white;
 }
 
-.container {
-  max-width: 500px;
-  margin: auto;
-  padding: 20px;
-}
+.container { max-width: 500px; margin:auto; padding:20px; }
 
 .card {
   background: rgba(255,255,255,0.12);
@@ -25,22 +21,19 @@ body {
   margin-bottom: 20px;
 }
 
-.days {
-  display: flex;
-  gap: 10px;
-}
+.days { display:flex; gap:10px; }
 
 .day {
-  flex: 1;
+  flex:1;
   background: rgba(255,255,255,0.2);
   border-radius: 15px;
-  text-align: center;
-  padding: 12px;
+  padding:10px;
+  text-align:center;
 }
 
-.big { font-size: 42px; }
-.icon { font-size: 30px; }
-.small { font-size: 12px; opacity: 0.8; }
+.big { font-size:42px; }
+.icon { font-size:28px; }
+.small { font-size:12px; opacity:0.8; margin-top:5px; }
 </style>
 </head>
 
@@ -50,7 +43,7 @@ body {
 
 <h2>📍 Vegår</h2>
 
-<div class="card" id="current">Laster...</div>
+<div class="card" id="current"></div>
 
 <div class="card">
   <b>3 DAGERS VARSEL</b>
@@ -68,42 +61,46 @@ function icon(t){
 }
 
 async function load(){
-  const res = await fetch("weather.json");
-  const data = await res.json();
+ const res = await fetch("weather.json");
+ const data = await res.json();
 
-  // ✅ juiste tijd
-  const time = new Date(data.time.replace(" ","T")+"Z")
-    .toLocaleString("no-NO",{timeZone:"Europe/Oslo"});
+ const time = new Date(data.time.replace(" ","T")+"Z")
+   .toLocaleString("no-NO",{timeZone:"Europe/Oslo"});
 
-  // ✅ NU
-  document.getElementById("current").innerHTML = `
-    <div>NÅ</div>
-    <div class="icon">${icon(data.temperature)}</div>
-    <div class="big">${data.temperature}°C</div>
-    💧 ${data.humidity}%<br>
-    <div class="small">${time}</div>
-  `;
+ // ✅ CURRENT
+ document.getElementById("current").innerHTML = `
+   <div>NÅ</div>
+   <div class="icon">${icon(data.temperature)}</div>
+   <div class="big">${data.temperature}°C</div>
+   💧 ${data.humidity}%<br>
+   <div class="small">${time}</div>
+ `;
 
-  // ✅ 3 dagen
-  const f = document.getElementById("forecast");
-  f.innerHTML = "";
+ // ✅ FORECAST PRO
+ const f = document.getElementById("forecast");
+ f.innerHTML = "";
 
-  data.forecast.forEach(d => {
-    const dt = new Date(d.time);
+ data.forecast.forEach(d => {
 
-    const dag = dt.toLocaleDateString("no-NO", {
-      weekday: "short",
-      timeZone: "Europe/Oslo"
-    });
+   const dt = new Date(d.time);
 
-    f.innerHTML += `
-      <div class="day">
-        <div>${dag}</div>
-        <div class="icon">${icon(d.temp)}</div>
-        <div>${d.temp}°C</div>
-      </div>
-    `;
-  });
+   const dag = dt.toLocaleDateString("no-NO", {
+     weekday:"short",
+     timeZone:"Europe/Oslo"
+   });
+
+   f.innerHTML += `
+     <div class="day">
+       <div>${dag}</div>
+       <div class="icon">${icon(d.temp)}</div>
+       <div>${d.temp}°C</div>
+
+       <div class="small">🌧️ ${d.rain} mm</div>
+       <div class="small">🌬️ ${d.wind} m/s</div>
+       <div class="small">☀️ UV ${d.uv}</div>
+     </div>
+   `;
+ });
 }
 
 load();
