@@ -13,7 +13,7 @@ body {
 }
 
 .container {
-  max-width:800px;
+  max-width:900px;
   margin:auto;
   padding:20px;
 }
@@ -24,6 +24,10 @@ body {
   padding:15px;
   margin-bottom:15px;
 }
+
+.temp { font-size:40px; }
+
+.row { font-size:14px; margin-top:4px; }
 
 </style>
 </head>
@@ -36,40 +40,54 @@ body {
 
 <div id="status">Starter...</div>
 
-<div id="current" class="card">Laster...</div>
+<div id="current" class="card"></div>
 
 <div id="forecast"></div>
 
 </div>
 
 <script>
-function icon(icon) {
-  return `https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${icon || "cloudy"}.svg`;
+
+/* ✅ ALTIJD VEILIG ICON */
+function safeIcon(icon) {
+
+  const allowed = [
+    "cloudy",
+    "partlycloudy_day",
+    "clearsky_day",
+    "rain",
+    "rainshowers_day",
+    "snow",
+    "fog"
+  ];
+
+  if (!allowed.includes(icon)) return "cloudy";
+
+  return icon;
+}
+
+/* ✅ ICON URL */
+function iconUrl(icon) {
+  return `https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${safeIcon(icon)}.svg`;
 }
 
 async function load() {
-  try {
 
-    document.getElementById("status").innerText = "🔄 Laster weather.json...";
+  try {
+    document.getElementById("status").innerText = "🔄 Laster...";
 
     const res = await fetch("weather.json?v=" + Date.now());
-
-    if (!res.ok) {
-      throw new Error("HTTP " + res.status);
-    }
-
     const data = await res.json();
 
     document.getElementById("status").innerText = "✅ Data lastet";
 
-    /* CURRENT */
+    /* ✅ CURRENT */
     document.getElementById("current").innerHTML = `
-      <h3>Temperatur</h3>
-      <div>${data.temperature}°C</div>
+      <div class="temp">${data.temperature}°C</div>
       <div>💧 ${data.humidity}%</div>
     `;
 
-    /* FORECAST */
+    /* ✅ FORECAST */
     const f = document.getElementById("forecast");
     f.innerHTML = "";
 
@@ -79,16 +97,24 @@ async function load() {
         weekday:"long"
       });
 
+      // ✅ veilige parsing
+      const rain = Number(d.rain || 0).toFixed(1);
+      const wind = Number(d.wind || 0).toFixed(1);
+      const sun = d.sun ?? "-";
+      const uv = d.uv ?? 0;
+
       f.innerHTML += `
         <div class="card">
 
-          <h3>${dag}</h3>
+          <b>${dag}</b>
 
-          <img src="${icon(d.icon)}" width="Math.round(d.max)}° / ${Math.round(d.min)}°</div>
-
-          <div>Nedbør: ${d.rain}</div>
-          <div>Vind: ${d.wind.toFixed(1)}</div>
-          <div>Sol: ${d.sun}</div>
+          <div>
+            <img src="${iconUrl(d.icon)}"
+                 width="40"
+                 onerror="this.src='${iconUrl("cloudy")}'<div class="row">Nedbør: ${rain} mm</div>
+          <div class="row">Vind: ${wind} m/s</div>
+          <div class="row">Sol: ${sun} h</div>
+          <div class="row">UV: ${uv}</div>
 
         </div>
       `;
@@ -96,17 +122,17 @@ async function load() {
 
   } catch (e) {
 
-    document.getElementById("status").innerHTML =
-      "❌ FEIL: " + e.message;
+    document.getElementById("status").innerText = "❌ FEIL: " + e.message;
 
     document.getElementById("current").innerHTML =
-      "Kunne ikke laste data";
+      "<b>Kunne ikke laste data</b>";
 
     console.error(e);
   }
 }
 
 load();
+
 </script>
 
 </body>
