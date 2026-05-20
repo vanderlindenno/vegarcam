@@ -58,3 +58,18 @@ jobs:
           git add weather.json
           git commit -m "Update weather data" || echo "No changes"
           git push
+
+          
+      - name: Get forecast data (Met.no)
+        run: |
+          LAT=52.37   # pas dit later aan naar jouw locatie
+          LON=4.90
+
+          echo "Calling Met.no API..."
+
+          curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=$LAT&lon=$LON" \
+          -H "User-Agent: my-weather-app" > forecast.json
+
+          echo "=== FORECAST RESPONSE ==="
+          cat forecast.json
+
