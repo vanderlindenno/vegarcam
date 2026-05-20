@@ -10,6 +10,7 @@ body {
   margin:0;
   font-family:-apple-system;
   background:#e9edf3;
+  color:#4a5568;
 }
 
 .container {
@@ -18,18 +19,25 @@ body {
   padding:20px;
 }
 
-.current, .day {
+.card {
   background:#f4f6fa;
   border-radius:20px;
   padding:15px;
   margin-bottom:15px;
 }
 
-.temp { font-size:40px; }
+.temp {
+  font-size:40px;
+}
 
-.red { color:red; }
-.green { color:green; }
+.day-title {
+  font-weight:bold;
+}
 
+.row {
+  font-size:14px;
+  margin-top:4px;
+}
 </style>
 </head>
 
@@ -39,9 +47,7 @@ body {
 
 <h2>📍 Vegår</h2>
 
-<div id="status">Status: starter...</div>
-
-<div id="current" class="current">Laster...</div>
+<div id="current" class="card">Laster...</div>
 
 <div id="forecast"></div>
 
@@ -54,26 +60,18 @@ function iconUrl(icon) {
 
 async function load() {
   try {
-    document.getElementById("status").innerHTML = "🔄 Laster JSON...";
-
-    const res = await fetch("weather.json?test=" + Date.now());
-
-    if (!res.ok) {
-      throw new Error("HTTP feil: " + res.status);
-    }
-
+    const res = await fetch("weather.json?t=" + Date.now());
     const data = await res.json();
 
-    document.getElementById("status").innerHTML =
-      "✅ JSON lastet OK";
-
-    // ✅ CURRENT
+    /* ✅ CURRENT */
     document.getElementById("current").innerHTML = `
-      <div class="temp">${data.temperature}°C</div>
-      <div>💧 ${data.humidity}%</div>
+      <div class="temp">
+        ${data.temperature ? Math.round(data.temperature) + "°C" : "—"}
+      </div>
+      <div>💧 ${data.humidity ? data.humidity + "%" : "—"}</div>
     `;
 
-    // ✅ FORECAST
+    /* ✅ FORECAST */
     const f = document.getElementById("forecast");
     f.innerHTML = "";
 
@@ -84,28 +82,24 @@ async function load() {
       });
 
       f.innerHTML += `
-        <div class="day">
+        <div class="card">
 
-          <div><b>${dag}</b></div>
+          <div class="day-title">${dag}</div>
 
-          <img src="${iconUrl(d.icon)}" width="Math.round(d.max)}°C / ${Math.round(d.min)}°C</div>
+          <img src="${iconUrl(d.icon)}" width="40th.round(d.max)}°C / ${Math.round(d.min)}°C</div>
 
-          <div>Nedbør: ${d.rain} mm</div>
-          <div>Vind: ${d.wind.toFixed(1)} m/s</div>
-          <div>Sol: ${d.sun}</div>
+          <div class="row">Nedbør: ${d.rain.toFixed(1)} mm</div>
+          <div class="row">Vind: ${d.wind.toFixed(1)} m/s</div>
+          <div class="row">Sol: ${d.sun} h</div>
+          <div class="row">UV: ${d.uv}</div>
 
         </div>
       `;
     });
 
   } catch (e) {
-
-    document.getElementById("status").innerHTML =
-      "❌ FEIL: " + e.message;
-
     document.getElementById("current").innerHTML =
-      "<div class='red'>Kunne ikke laste data</div>";
-
+      "<b>Feil ved lasting av vær</b>";
     console.error(e);
   }
 }
