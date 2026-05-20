@@ -19,24 +19,93 @@ body {
   padding:20px;
 }
 
-.card {
+h2 { margin-bottom:15px; }
+
+/* CURRENT */
+.current {
   background:#f4f6fa;
-  border-radius:20px;
-  padding:15px;
-  margin-bottom:15px;
+  border-radius:25px;
+  padding:20px;
+  margin-bottom:20px;
+  display:flex;
+  align-items:center;
+  gap:15px;
+}
+
+.current img {
+  width:50px;
 }
 
 .temp {
-  font-size:40px;
+  font-size:42px;
+  font-weight:600;
 }
 
-.day-title {
-  font-weight:bold;
+/* FORECAST */
+.days {
+  display:flex;
+  gap:15px;
+}
+
+.day {
+  flex:1;
+  background:#f4f6fa;
+  border-radius:25px;
+  padding:20px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.05);
+}
+
+.day-inner {
+  display:flex;
+  gap:12px;
+}
+
+.icon-col {
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  align-items:center;
+}
+
+.icon-col img {
+  width:24px;
+}
+
+/* data */
+.data {
+  flex:1;
+}
+
+.title {
+  font-weight:600;
+  margin-bottom:6px;
+}
+
+.day:first-child .title {
+  color:#f97316;
+}
+
+.max {
+  font-size:24px;
+  font-weight:600;
+}
+
+.min {
+  color:#9aa3b2;
+  margin-bottom:8px;
 }
 
 .row {
-  font-size:14px;
-  margin-top:4px;
+  display:flex;
+  justify-content:space-between;
+  font-size:13px;
+}
+
+/* mobile */
+@media (max-width:600px) {
+  .days {
+    flex-direction:column;
+  }
 }
 </style>
 </head>
@@ -47,61 +116,71 @@ body {
 
 <h2>📍 Vegår</h2>
 
-<div id="current" class="card">Laster...</div>
+<div id="current" class="current">Laster...</div>
 
-<div id="forecast"></div>
+<div id="forecast" class="days"></div>
 
 </div>
 
 <script>
-function iconUrl(icon) {
-  return `https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${icon}.svg`;
+function icon(icon) {
+  const fallback = "cloudy";
+  return `https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${icon || fallback}.svg`;
 }
 
 async function load() {
-  try {
-    const res = await fetch("weather.json?t=" + Date.now());
-    const data = await res.json();
+  const res = await fetch("weather.json?x=" + Date.now());
+  const data = await res.json();
 
-    /* ✅ CURRENT */
-    document.getElementById("current").innerHTML = `
-      <div class="temp">
+  /* ✅ CURRENT */
+  const currentIcon = data.forecast?.[0]?.icon || "cloudy";
+
+  document.getElementById("current").innerHTML = `
+    <img src="${icon(currentIcon)}" onerror="this.src='${icon("cloudy")="temp">
         ${data.temperature ? Math.round(data.temperature) + "°C" : "—"}
       </div>
       <div>💧 ${data.humidity ? data.humidity + "%" : "—"}</div>
-    `;
+    </div>
+  `;
 
-    /* ✅ FORECAST */
-    const f = document.getElementById("forecast");
-    f.innerHTML = "";
+  /* ✅ FORECAST */
+  const f = document.getElementById("forecast");
+  f.innerHTML = "";
 
-    data.forecast.forEach(d => {
+  data.forecast.forEach(d => {
 
-      const dag = new Date(d.date).toLocaleDateString("no-NO", {
-        weekday:"long"
-      });
-
-      f.innerHTML += `
-        <div class="card">
-
-          <div class="day-title">${dag}</div>
-
-          <img src="${iconUrl(d.icon)}" width="40th.round(d.max)}°C / ${Math.round(d.min)}°C</div>
-
-          <div class="row">Nedbør: ${d.rain.toFixed(1)} mm</div>
-          <div class="row">Vind: ${d.wind.toFixed(1)} m/s</div>
-          <div class="row">Sol: ${d.sun} h</div>
-          <div class="row">UV: ${d.uv}</div>
-
-        </div>
-      `;
+    const dag = new Date(d.date).toLocaleDateString("no-NO", {
+      weekday:"long"
     });
 
-  } catch (e) {
-    document.getElementById("current").innerHTML =
-      "<b>Feil ved lasting av vær</b>";
-    console.error(e);
-  }
+    f.innerHTML += `
+      <div class="day">
+
+        <div class="day-inner">
+
+          <!-- ICONEN LINKS -->
+          <div class="icon-col">
+            <img src="${icon(d.icon)}" onerror="this.src='${icon("cloudy")}'("wind")}src="${icon("clearsky_day")}   <!-- DATA -->
+          <div class="data">
+
+            <div class="title">${dag}</div>
+
+            <div class="max">${Math.round(d.max)}°C</div>
+            <div class="min">${Math.round(d.min)}°C</div>
+
+            <div class="row">Nedbør <span>${d.rain.toFixed(1)} mm</span></div>
+            <div class="row">Vind <span>${d.wind.toFixed(1)} m/s</span></div>
+            <div class="row">Sol <span>${d.sun} h</span></div>
+            <div class="row">UV <span>${d.uv}</span></div>
+
+          </div>
+
+        </div>
+
+      </div>
+    `;
+  });
+
 }
 
 load();
