@@ -6,31 +6,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body {
-  margin:0;
-  font-family:-apple-system, sans-serif;
-  background:#e9edf3;
-  color:#4a5568;
-}
-
+body { margin:0; font-family:-apple-system; background:#e9edf3; color:#4a5568; }
 .container { max-width:900px; margin:auto; padding:15px; }
 h2 { margin-bottom:15px; }
 
-/* CURRENT */
 .current {
   background:#f4f6fa;
   border-radius:25px;
   padding:20px;
   margin-bottom:20px;
   display:flex;
-  align-items:center;
   gap:15px;
+  align-items:center;
 }
 
 .current img { width:60px; }
 .temp { font-size:42px; font-weight:bold; }
 
-/* FORECAST */
 .days { display:flex; gap:15px; }
 
 .day {
@@ -40,10 +32,7 @@ h2 { margin-bottom:15px; }
   padding:20px;
 }
 
-.day-inner {
-  display:flex;
-  gap:15px;
-}
+.day-inner { display:flex; gap:15px; }
 
 .icon-col {
   display:flex;
@@ -56,7 +45,7 @@ h2 { margin-bottom:15px; }
 
 .data-col { flex:1; }
 
-.title { font-weight:500; margin-bottom:6px; }
+.title { margin-bottom:6px; }
 .day:first-child .title { color:#f97316; }
 
 .max { font-size:26px; font-weight:600; }
@@ -68,7 +57,6 @@ h2 { margin-bottom:15px; }
   font-size:13px;
 }
 
-/* version */
 .version {
   text-align:center;
   margin-top:20px;
@@ -76,7 +64,6 @@ h2 { margin-bottom:15px; }
   color:#888;
 }
 
-/* mobile */
 @media (max-width:600px) {
   .days { flex-direction:column; }
 }
@@ -98,20 +85,9 @@ h2 { margin-bottom:15px; }
 <script>
 const VERSION = new Date().toISOString();
 
-/* ✅ BETERE ICON MAPPING */
-function mapIcon(icon) {
-  if (!icon) return "cloudy";
-
-  if (icon.includes("clearsky")) return "clearsky_day";
-  if (icon.includes("fair")) return "fair_day";
-  if (icon.includes("partlycloudy")) return "partlycloudy_day";
-  if (icon.includes("cloudy")) return "cloudy";
-  if (icon.includes("rainshowers")) return "rainshowers_day";
-  if (icon.includes("rain")) return "rain";
-  if (icon.includes("snow")) return "snow";
-  if (icon.includes("fog")) return "fog";
-
-  return "cloudy";
+/* ✅ DIRECT MET ICON (geen mapping nodig) */
+function iconUrl(icon) {
+  return `https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${icon}.svg`;
 }
 
 async function load() {
@@ -119,17 +95,16 @@ async function load() {
   const data = await res.json();
 
   /* CURRENT */
-  const currentIcon = mapIcon(data.forecast?.[0]?.icon);
+  const currentIcon = data.forecast?.[0]?.icon || "cloudy";
 
   document.getElementById("current").innerHTML = `
-    <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${currentIcon<div>
+    <img src="${iconUrl(currentIcon)}
       <div>Nå</div>
       <div class="temp">${Math.round(data.temperature)}°C</div>
       <div>💧 ${data.humidity}%</div>
     </div>
   `;
 
-  /* FORECAST */
   const f = document.getElementById("forecast");
   f.innerHTML = "";
 
@@ -138,8 +113,7 @@ async function load() {
     const dag = new Date(d.date)
       .toLocaleDateString("no-NO",{weekday:"long", timeZone:"Europe/Oslo"});
 
-    const icon = mapIcon(d.icon);
-    const sun = d.sun ?? "-";
+    const icon = d.icon || "cloudy";
 
     f.innerHTML += `
       <div class="day">
@@ -147,9 +121,7 @@ async function load() {
         <div class="day-inner">
 
           <div class="icon-col">
-            <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${icon}.svg   <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/rain       <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/wind.svg   <img src="https://cdn.jsdelivr.net/gh/metno/weathericons/svg/clearsky_day     </div>
-
-          <div class="data-col">
+            <img src="${iconUrl(icon     <img src="${iconUrl("rainmg src="${iconUrl("wind")}src="${iconUrl("clearsky_day      <div class="data-col">
 
             <div class="title">${dag}</div>
 
@@ -158,7 +130,7 @@ async function load() {
 
             <div class="row">Nedbør <span>${d.rain.toFixed(1)} mm</span></div>
             <div class="row">Vind <span>${d.wind.toFixed(1)} m/s</span></div>
-            <div class="row">Soltimer <span>${sun} h</span></div>
+            <div class="row">Soltimer <span>${d.sun} h</span></div>
             <div class="row">UV <span>${d.uv}</span></div>
 
           </div>
