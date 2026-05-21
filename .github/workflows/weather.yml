@@ -54,4 +54,3 @@ automation:
               "pressure": {{ states('sensor.outdoor_pressure_clean') | float(0) }},
               "updated": "{{ now().isoformat() }}"
             }
-``
