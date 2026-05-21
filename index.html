@@ -22,6 +22,7 @@ body {
     max-width: 900px;
 }
 
+/* HEADER */
 header {
     text-align: center;
     margin-top: 20px;
@@ -32,26 +33,39 @@ header {
     color: #666;
 }
 
-/* CURRENT */
+/* CURRENT CARD */
 .current-card {
     background: white;
     border-radius: 20px;
     padding: 20px;
     box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 260px;
 }
 
 .current-grid {
     display: flex;
-    gap: 25px;
+    gap: 30px;
     align-items: center;
 }
 
-.left { flex: 0 0 220px; }
-.right { flex: 1; }
+.left {
+    flex: 0 0 220px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.right {
+    flex: 1;
+}
 
 .right canvas {
     width: 100%;
-    height: 180px !important;
+    height: 200px !important;
 }
 
 .day {
@@ -60,7 +74,9 @@ header {
     font-size: 1.1rem;
 }
 
-.icon { font-size: 2.5rem; }
+.icon {
+    font-size: 2.5rem;
+}
 
 .temp {
     font-size: 3rem;
@@ -76,7 +92,7 @@ header {
 /* FORECAST */
 .container {
     display: flex;
-    gap: 15px;
+    gap: 16px;
     margin-top: 20px;
 }
 
@@ -114,7 +130,7 @@ header {
 
 <header>
     🇳🇴 Værmelding
-    <div class="label">Versjon 7.0</div>
+    <div class="label">Versjon 8.0</div>
 </header>
 
 <div class="wrapper">
@@ -129,19 +145,14 @@ header {
 
 <script>
 
-// 🌡️ temperatuur kleur functie
+// 🌡️ temperatuur kleur
 function getTempColor(temp){
-    if(temp <= 0) return "#3b82f6"; // blauw
+    if(temp <= 0) return "#3b82f6";
     if(temp <= 10) return "#60a5fa";
     if(temp <= 20) return "#f97316";
     if(temp <= 25) return "#ef4444";
-    return "#b91c1c"; // heet
+    return "#b91c1c";
 }
-
-const lat = 58.79;
-const lon = 8.79;
-
-const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,sunshine_duration,uv_index_max&timezone=Europe%2FOslo`;
 
 function getIcon(code){
     if(code === 0) return "☀️";
@@ -155,6 +166,11 @@ function formatDay(date){
     return new Date(date).toLocaleDateString("no-NO",{weekday:"long"});
 }
 
+const lat = 58.79;
+const lon = 8.79;
+
+const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,sunshine_duration,uv_index_max&timezone=Europe%2FOslo`;
+
 async function init(){
 
     const [currentRes, forecastRes] = await Promise.all([
@@ -165,12 +181,13 @@ async function init(){
     const current = await currentRes.json();
     const data = await forecastRes.json();
 
-    // CURRENT
     const tempColor = getTempColor(current.temperature);
 
+    // CURRENT CARD
     document.getElementById("current").innerHTML = `
     <div class="current-card">
         <div class="current-grid">
+
             <div class="left">
 
                 <div class="day">I dag</div>
@@ -190,6 +207,7 @@ async function init(){
             <div class="right">
                 <canvas id="chart"></canvas>
             </div>
+
         </div>
 
         <div class="label">
@@ -198,18 +216,19 @@ async function init(){
     </div>
     `;
 
-    // GRAPH
+    // 📊 GRAFIEK met Y-as
     const now = new Date().getHours();
     const temps = data.hourly.temperature_2m.slice(now, now+12);
-    const times = data.hourly.time.slice(now, now+12)
-        .map(t => new Date(t).getHours());
+    const times = data.hourly.time.slice(now, now+12).map(t =>
+        new Date(t).getHours()
+    );
 
     new Chart(document.getElementById("chart"),{
         type:"line",
         data:{
-            labels:times,
+            labels: times,
             datasets:[{
-                data:temps,
+                data: temps,
                 borderColor:"#f97316",
                 backgroundColor:"rgba(249,115,22,0.2)",
                 fill:true,
@@ -219,11 +238,24 @@ async function init(){
         },
         options:{
             plugins:{legend:{display:false}},
-            scales:{y:{display:false}}
+            scales:{
+                y:{
+                    display:true,
+                    ticks:{
+                        callback: v => v + "°"
+                    },
+                    grid:{
+                        color:"rgba(0,0,0,0.05)"
+                    }
+                },
+                x:{
+                    ticks:{font:{size:10}}
+                }
+            }
         }
     });
 
-    // FORECAST DELUXE (alleen volgende 3 dagen)
+    // 🌤️ FORECAST DELUXE (fre/lør/søn)
     const container = document.getElementById("weather");
     container.innerHTML = "";
 
@@ -231,39 +263,31 @@ async function init(){
 
         const max = data.daily.temperature_2m_max[i];
         const min = data.daily.temperature_2m_min[i];
-
-        const rain = data.daily.precipitation_sum[i];
-        const wind = data.daily.windspeed_10m_max[i];
-        const sun = (data.daily.sunshine_duration[i]/3600).toFixed(1);
-        const uv = data.daily.uv_index_max[i];
-
         const color = getTempColor(max);
 
-        const card = document.createElement("div");
-        card.className = "card";
+        const card=document.createElement("div");
+        card.className="card";
 
-        card.innerHTML = `
+        card.innerHTML=`
             <div class="day">${formatDay(data.daily.time[i])}</div>
             <div class="icon">${getIcon(data.daily.weathercode[i])}</div>
 
             <div class="temp-max" style="color:${color}">
                 ${Math.round(max)}°
             </div>
-
-            <div class="temp-min">
-                ${Math.round(min)}°
-            </div>
+            <div class="temp-min">${Math.round(min)}°</div>
 
             <div class="details">
-                🌧️ ${rain} mm<br>
-                💨 ${wind} m/s<br>
-                ☀️ ${sun} h<br>
-                UV ${uv}
+                🌧️ ${data.daily.precipitation_sum[i]} mm<br>
+                💨 ${data.daily.windspeed_10m_max[i]} m/s<br>
+                ☀️ ${(data.daily.sunshine_duration[i]/3600).toFixed(1)} h<br>
+                UV ${data.daily.uv_index_max[i]}
             </div>
         `;
 
         container.appendChild(card);
     }
+
 }
 
 init();
