@@ -32,7 +32,7 @@ header {
     display:flex;
     flex-direction:column;
     justify-content:center;
-    min-height:260px;
+    margin-top:10px;
 }
 
 .current-grid {
@@ -44,9 +44,10 @@ header {
 .left { flex:0 0 220px; }
 .right { flex:1; }
 
-.right canvas {
+.right canvas,
+#historyChart {
     width:100%;
-    height:200px !important;
+    height:220px !important;
 }
 
 .temp {
@@ -91,7 +92,7 @@ header {
 
 <header>
     🇳🇴 Værmelding
-    <div class="label">Versjon 11.0</div>
+    <div class="label">Versjon 12.0</div>
 </header>
 
 <div class="wrapper">
@@ -101,6 +102,11 @@ header {
 
 <h4>Værprognose</h4>
 <div class="container" id="weather"></div>
+
+<h4>Historisk vær</h4>
+<div class="current-card">
+    <canvas id="historyChart"></canvas>
+</div>
 
 </div>
 
@@ -138,7 +144,8 @@ const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lo
 async function init(){
 
 const [cRes,fRes]=await Promise.all([
-fetch("public/current.json"),fetch(url)
+fetch("public/current.json"),
+fetch(url)
 ]);
 
 const current=await cRes.json();
@@ -153,7 +160,6 @@ document.getElementById("current").innerHTML=`
 
 <div class="left">
 <div class="day">I dag</div>
-
 <div class="icon">${getIcon(data.daily.weathercode[0])}</div>
 
 <div class="temp" style="color:${color}">
@@ -189,7 +195,6 @@ const gradient=ctx.createLinearGradient(0,0,0,200);
 gradient.addColorStop(0,"rgba(249,115,22,0.5)");
 gradient.addColorStop(1,"rgba(249,115,22,0)");
 
-// 📍 NU lijn
 const nowLine={
 id:'nowLine',
 afterDraw(chart){
@@ -219,9 +224,7 @@ tension:0.4
 },
 options:{
 plugins:{legend:{display:false}},
-scales:{
-y:{ticks:{callback:v=>v+"°"}}
-}
+scales:{y:{ticks:{callback:v=>v+"°"}}}
 },
 plugins:[nowLine]
 });
@@ -263,7 +266,70 @@ container.appendChild(card);
 
 }
 
+//////////////////////////////////////////////////
+// ✅ HISTORIEK (LOS – geen impact op rest)
+//////////////////////////////////////////////////
+
+async function loadHistory(){
+
+try {
+
+const res = await fetch("public/history.json");
+const history = await res.json();
+
+const labels = history.daily.time.map(d =>
+    new Date(d).toLocaleDateString("no-NO",{day:"numeric",month:"short"})
+);
+
+const temps = history.daily.temperature_2m_mean;
+const rain = history.daily.precipitation_sum;
+
+new Chart(document.getElementById("historyChart"),{
+data:{
+labels:labels,
+datasets:[
+{
+type:"line",
+data:temps,
+borderColor:"#ef4444",
+tension:0.4,
+yAxisID:"y"
+},
+{
+type:"bar",
+data:rain,
+backgroundColor:"rgba(59,130,246,0.5)",
+yAxisID:"y1"
+}
+]
+},
+options:{
+responsive:true,
+plugins:{legend:{display:false}},
+scales:{
+y:{
+position:"left",
+ticks:{callback:v=>v+"°"}
+},
+y1:{
+position:"right",
+grid:{drawOnChartArea:false},
+ticks:{callback:v=>v+" mm"}
+}
+}
+}
+});
+
+} catch(e) {
+    console.log("No history data yet");
+}
+
+}
+
+// INIT
 init();
+loadHistory();
+
 </script>
 
 </body>
