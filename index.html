@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Værmelding</title>
 
-<meta name="version" content="3.0.0">
+<meta name="version" content="3.1.0">
 
 <style>
 body {
@@ -27,6 +27,13 @@ header {
 .version {
     font-size: 0.75rem;
     color: #888;
+}
+
+/* CURRENT CONTAINER (FIX CENTRERING) */
+#current {
+    display: flex;
+    justify-content: center;
+    width: 100%;
 }
 
 /* CONTAINER */
@@ -100,7 +107,7 @@ header {
 
 <header>
     🇳🇴 Værmelding
-    <div class="version">Versjon 3.0.0</div>
+    <div class="version">Versjon 3.1.0</div>
 </header>
 
 <!-- 🔝 CURRENT WEATHER -->
@@ -115,7 +122,7 @@ header {
 const lat = 58.79492656129151;
 const lon = 8.790772896300094;
 
-// ===== FORECAST API =====
+// ✅ FIX: correcte URL (geen &amp;)
 const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max,sunshine_duration&timezone=Europe%2FOslo`;
 
 // ===== ICONS =====
@@ -135,10 +142,12 @@ function formatDay(dateStr){
         .toLocaleDateString("no-NO", { weekday: "long" });
 }
 
-// ===== CURRENT WEATHER (NETATMO JSON) =====
-fetch("public/weather.json")
+// ===== CURRENT WEATHER =====
+fetch("public/current.json")  // ✅ FIX
 .then(res => res.json())
 .then(data => {
+
+    if(!data.temperature) throw "No data";
 
     const el = document.getElementById("current");
 
