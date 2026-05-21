@@ -1,15 +1,45 @@
+#################################################
+# 🔒 TOEGANG TOT BESTANDEN
+#################################################
 homeassistant:
   allowlist_external_dirs:
     - "/config/www"
 
+#################################################
+# 📄 JSON EXPORT (FILE WRITER)
+#################################################
 notify:
   - platform: file
     name: weather_export
     filename: /config/www/public/current.json
     timestamp: false
 
+#################################################
+# 🌡️ TEMPLATE SENSORS (OPTIONEEL MAAR NETJES)
+#################################################
+template:
+  - sensor:
+
+      - name: "Outdoor Temperature Clean"
+        state: "{{ states('sensor.netatmo_outdoor_temperature') | float(0) }}"
+        unit_of_measurement: "°C"
+
+      - name: "Outdoor Humidity Clean"
+        state: "{{ states('sensor.netatmo_outdoor_humidity') | float(0) }}"
+        unit_of_measurement: "%"
+
+      - name: "Outdoor Pressure Clean"
+        state: "{{ states('sensor.netatmo_pressure') | float(0) }}"
+        unit_of_measurement: "hPa"
+
+#################################################
+# 🔁 AUTOMATION (JSON SCHRIJVEN)
+#################################################
 automation:
-  - alias: "Weather JSON"
+  - alias: "Weather JSON Export"
+    description: "Schrijft weather data naar JSON voor dashboard"
+    mode: single
+
     trigger:
       - platform: time_pattern
         minutes: "/5"
@@ -19,27 +49,9 @@ automation:
         data:
           message: >
             {
-              "temperature": {{ states('sensor.netatmo_outdoor_temperature') | float(0) }},
-              "humidity": {{ states('sensor.netatmo_outdoor_humidity') | float(0) }},
-              "pressure": {{ states('sensor.netatmo_pressure') | float(0) }},
-
-              "dew_point": {{
-                (
-                  (237.7 * (
-                    (17.27 * states('sensor.netatmo_outdoor_temperature')|float(0)) /
-                    (237.7 + states('sensor.netatmo_outdoor_temperature')|float(0))
-                    + log(states('sensor.netatmo_outdoor_humidity')|float(0) / 100)
-                  ))
-                  /
-                  (
-                    17.27 - (
-                      (17.27 * states('sensor.netatmo_outdoor_temperature')|float(0)) /
-                      (237.7 + states('sensor.netatmo_outdoor_temperature')|float(0))
-                      + log(states('sensor.netatmo_outdoor_humidity')|float(0) / 100)
-                    )
-                  )
-                ) | round(1)
-              }},
-
+              "temperature": {{ states('sensor.outdoor_temperature_clean') | float(0) }},
+              "humidity": {{ states('sensor.outdoor_humidity_clean') | float(0) }},
+              "pressure": {{ states('sensor.outdoor_pressure_clean') | float(0) }},
               "updated": "{{ now().isoformat() }}"
             }
+``
