@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Værmelding</title>
 
-<meta name="version" content="4.0">
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+https://cdn.jsdelivr.net/npm/chart.js>
 
 <style>
 body {
@@ -30,49 +28,82 @@ header {
 }
 
 .section-title {
-    font-size: 0.9rem;
     color: #666;
-    margin-top: 15px;
-    text-align: center;
+    margin-top: 20px;
 }
 
+/* WRAPPER */
 .wrapper {
     width: 100%;
     max-width: 900px;
 }
 
-.container {
-    display: flex;
-    gap: 16px;
-    padding: 20px 0;
-}
-
-.current-card, .card {
-    flex: 1;
+/* CURRENT CARD */
+.current-card {
+    width: 100%;
     background: white;
     border-radius: 20px;
-    padding: 18px;
-    text-align: center;
+    padding: 20px;
     box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+}
+
+/* GRID */
+.current-grid {
+    display: flex;
+    gap: 30px;
+    align-items: center;
+}
+
+/* LEFT SIDE */
+.left {
+    flex: 0 0 220px;
 }
 
 .day {
     color: #f97316;
-    font-weight: 600;
+    font-weight: bold;
+    font-size: 1.2rem;
 }
 
 .icon {
-    font-size: 2rem;
+    font-size: 2.5rem;
+    margin: 5px 0;
 }
 
-.temp-max {
-    font-size: 2rem;
+.temp {
+    font-size: 2.8rem;
     font-weight: bold;
 }
 
 .row {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     margin: 4px 0;
+}
+
+/* RIGHT GRAPH */
+.right {
+    flex: 1;
+}
+
+.right canvas {
+    width: 100%;
+    height: 180px !important;
+}
+
+/* FORECAST */
+.container {
+    display: flex;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.card {
+    flex: 1;
+    background: white;
+    border-radius: 20px;
+    padding: 15px;
+    text-align: center;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.08);
 }
 
 .label {
@@ -86,7 +117,7 @@ header {
 
 <header>
     🇳🇴 Værmelding
-    <div class="version">Versjon 4.0</div>
+    <div class="version">Versjon 5.0</div>
 </header>
 
 <div class="wrapper">
@@ -104,27 +135,14 @@ header {
 const lat = 58.79;
 const lon = 8.79;
 
-const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max,sunshine_duration&hourly=temperature_2m&timezone=Europe%2FOslo`;
+const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Europe%2FOslo`;
 
-// helpers
 function getIcon(code){
     if(code === 0) return "☀️";
     if(code <= 3) return "🌤️";
     if(code <= 48) return "☁️";
     if(code <= 67) return "🌧️";
-    if(code <= 77) return "❄️";
-    if(code >= 95) return "⛈️";
     return "🌥️";
-}
-
-function dewPoint(t, h){
-    const a=17.27, b=237.7;
-    const alpha=((a*t)/(b+t))+Math.log(h/100);
-    return ((b*alpha)/(a-alpha)).toFixed(1);
-}
-
-function feelsLike(t){
-    return t.toFixed(1);
 }
 
 function formatDay(date){
@@ -136,29 +154,38 @@ fetch("public/current.json")
 .then(r=>r.json())
 .then(data=>{
 
-    const updated = new Date(data.updated).toLocaleTimeString("no-NO",{hour:"2-digit",minute:"2-digit"});
+    const updated = new Date(data.updated).toLocaleTimeString("no-NO");
 
     document.getElementById("current").innerHTML = `
     <div class="current-card">
-        <div class="day">I dag</div>
-        <div class="icon">🌤️</div>
 
-        <div class="temp-max">${Math.round(data.temperature)}°C</div>
+        <div class="current-grid">
 
-        <div class="row">🌡️ Føles som ${feelsLike(data.temperature)}°C</div>
-        <div class="row">💧 ${data.humidity}%</div>
-        <div class="row">🌫️ Duggpunkt ${dewPoint(data.temperature, data.humidity)}°C</div>
-        <div class="row">📊 ${data.pressure} hPa</div>
+            <div class="left">
+                <div class="day">I dag</div>
+                <div class="icon">🌤️</div>
+                <div class="temp">${Math.round(data.temperature)}°C</div>
 
-        <canvas id="chart" height="80"></canvas>
+                <div class="row">🌡️ Føles som ${data.feels_like ?? data.temperature}°C</div>
+                <div class="row">💧 ${data.humidity}%</div>
+                <div class="row">🌫️ Duggpunkt ${data.dew_point ?? "--"}°C</div>
+                <div class="row">📊 ${data.pressure} hPa</div>
+            </div>
+
+            <div class="right">
+                <canvas id="chart"></canvas>
+            </div>
+
+        </div>
 
         <div class="label">Oppdatert ${updated}</div>
+
     </div>
     `;
 });
 
 // FORECAST + GRAPH
-fetch(forecastUrl)
+fetch(url)
 .then(r=>r.json())
 .then(data=>{
 
@@ -168,7 +195,6 @@ fetch(forecastUrl)
     const times = data.hourly.time.slice(now, now+12)
         .map(t=> new Date(t).getHours());
 
-    // chart
     new Chart(document.getElementById("chart"),{
         type:"line",
         data:{
@@ -191,20 +217,14 @@ fetch(forecastUrl)
     const container = document.getElementById("weather");
 
     for(let i=0;i<3;i++){
-        const sun=(data.daily.sunshine_duration[i]/3600).toFixed(1);
-
         const card=document.createElement("div");
         card.className="card";
 
         card.innerHTML=`
             <div class="day">${formatDay(data.daily.time[i])}</div>
             <div class="icon">${getIcon(data.daily.weathercode[i])}</div>
-            <div class="temp-max">${Math.round(data.daily.temperature_2m_max[i])}°</div>
-            <div class="row">${Math.round(data.daily.temperature_2m_min[i])}°</div>
-            <div class="row">🌧️ ${data.daily.precipitation_sum[i]} mm</div>
-            <div class="row">💨 ${data.daily.windspeed_10m_max[i]} m/s</div>
-            <div class="row">☀️ ${sun} h</div>
-            <div class="label">UV ${data.daily.uv_index_max[i]}</div>
+            <div class="temp">${Math.round(data.daily.temperature_2m_max[i])}°</div>
+            <div>${Math.round(data.daily.temperature_2m_min[i])}°</div>
         `;
 
         container.appendChild(card);
