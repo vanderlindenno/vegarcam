@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Værmelding</title>
 
-<meta name="version" content="2.1.0">
+<meta name="version" content="3.0.0">
 
 <style>
 body {
@@ -40,8 +40,8 @@ header {
     padding: 20px;
 }
 
-/* CARD */
-.card {
+/* CARD BASIS */
+.card, .current-card {
     width: 220px;
     background: white;
     border-radius: 20px;
@@ -50,7 +50,13 @@ header {
     box-shadow: 0 8px 18px rgba(0,0,0,0.08);
 }
 
-/* TEXT STYLES */
+/* Current card iets groter */
+.current-card {
+    width: 260px;
+    margin-bottom: 10px;
+}
+
+/* TEXT */
 .day {
     color: #f97316;
     font-weight: 600;
@@ -72,7 +78,7 @@ header {
     margin-bottom: 10px;
 }
 
-/* INFO ROWS */
+/* ROWS */
 .row {
     display: flex;
     justify-content: center;
@@ -94,19 +100,25 @@ header {
 
 <header>
     🇳🇴 Værmelding
-    <div class="version">Versjon 2.1.0</div>
+    <div class="version">Versjon 3.0.0</div>
 </header>
 
+<!-- 🔝 CURRENT WEATHER -->
+<div id="current"></div>
+
+<!-- 🔽 FORECAST -->
 <div class="container" id="weather"></div>
 
 <script>
 
+// ===== LOCATIE =====
 const lat = 58.79492656129151;
 const lon = 8.790772896300094;
 
+// ===== FORECAST API =====
 const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max,sunshine_duration&timezone=Europe%2FOslo`;
 
-/* ICONS */
+// ===== ICONS =====
 function getIcon(code){
     if(code === 0) return "☀️";
     if(code <= 3) return "🌤️";
@@ -117,13 +129,44 @@ function getIcon(code){
     return "🌥️";
 }
 
-/* DATE */
+// ===== DAG =====
 function formatDay(dateStr){
     return new Date(dateStr + "T12:00:00")
         .toLocaleDateString("no-NO", { weekday: "long" });
 }
 
-/* FETCH DATA */
+// ===== CURRENT WEATHER (NETATMO JSON) =====
+fetch("public/current.json")
+.then(res => res.json())
+.then(data => {
+
+    const el = document.getElementById("current");
+
+    const updated = new Date(data.updated).toLocaleTimeString("no-NO", {
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+
+    el.innerHTML = `
+        <div class="current-card">
+            <div class="day">I dag</div>
+
+            <div class="icon">🌤️</div>
+
+            <div class="temp-max">${Math.round(data.temperature)}°C</div>
+
+            <div class="row">💧 ${data.humidity}%</div>
+            <div class="row">📊 ${data.pressure} hPa</div>
+
+            <div class="label">Oppdatert ${updated}</div>
+        </div>
+    `;
+})
+.catch(() => {
+    document.getElementById("current").innerHTML = "";
+});
+
+// ===== FORECAST =====
 fetch(url)
 .then(res => res.json())
 .then(data => {
@@ -155,9 +198,6 @@ fetch(url)
         container.appendChild(card);
     }
 
-})
-.catch(() => {
-    document.getElementById("weather").innerHTML = "Kunne ikke hente værdata.";
 });
 
 </script>
