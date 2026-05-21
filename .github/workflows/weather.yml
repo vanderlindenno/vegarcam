@@ -1,48 +1,33 @@
-name: Update Weather
+name: Weather JSON Update
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:
-  weather:
+  update-weather:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Fetch data from met.no
+      - name: Create JSON file
         run: |
-          curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=58.795&lon=8.79" \
-          -H "User-Agent: vegarcam-weather-app" > forecast.json
+          cat <<EOF > public/current.json
+          {
+            "temperature": 12.5,
+            "humidity": 75,
+            "pressure": 1012,
+            "updated": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          }
+          EOF
 
-      - name: Create current weather JSON
-        run: |
-          TEMP=$(jq '.properties.timeseries[0].data.instant.details.air_temperature' forecast.json)
-          HUM=$(jq '.properties.timeseries[0].data.instant.details.relative_humidity' forecast.json)
-          PRESS=$(jq '.properties.timeseries[0].data.instant.details.air_pressure_at_sea_level' forecast.json)
-          TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-          mkdir -p public
-
-          echo "{
-            \"temperature\": $TEMP,
-            \"humidity\": $HUM,
-            \"pressure\": $PRESS,
-            \"updated\": \"$TIME\"
-          }" > public/current.json
-
-      - name: Commit and push
+      - name: Commit & push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-
           git add public/current.json
-
-          git commit -m "Update current weather" || echo "No changes"
+          git commit -m "Update weather data" || echo "No changes"
           git push
