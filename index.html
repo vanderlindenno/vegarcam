@@ -3,150 +3,146 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Værmelding – Norge</title>
+<title>Værmelding</title>
 
-<!-- Version -->
-<meta name="version" content="1.0.0">
+<meta name="version" content="2.0.0">
 
 <style>
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-        margin: 0;
-        background: linear-gradient(to bottom, #2c5364, #0f2027);
-        color: white;
-    }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #f2f4f7;
+    margin: 0;
+    color: #333;
+}
 
-    header {
-        padding: 16px;
-        text-align: center;
-        font-size: 1.4rem;
-        font-weight: bold;
-    }
+header {
+    text-align: center;
+    padding: 15px;
+    font-weight: bold;
+}
 
-    .version {
-        font-size: 0.7rem;
-        opacity: 0.6;
-    }
+.version {
+    font-size: 0.7rem;
+    color: #888;
+}
 
-    .container {
-        padding: 12px;
-    }
+.container {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 12px;
+}
 
-    .card {
-        background: rgba(255,255,255,0.08);
-        border-radius: 18px;
-        padding: 16px;
-        margin-bottom: 12px;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-    }
+.card {
+    min-width: 200px;
+    background: #fff;
+    border-radius: 18px;
+    padding: 16px;
+    text-align: center;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+}
 
-    .day {
-        font-size: 1.2rem;
-        margin-bottom: 10px;
-    }
+.day {
+    color: #f97316;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
 
-    .weather-main {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
+.icon {
+    font-size: 2rem;
+    margin: 10px 0;
+}
 
-    .temp {
-        font-size: 2rem;
-        font-weight: bold;
-    }
+.temp-max {
+    font-size: 1.6rem;
+    font-weight: bold;
+}
 
-    .details {
-        margin-top: 10px;
-        font-size: 0.9rem;
-        opacity: 0.9;
-    }
+.temp-min {
+    color: #777;
+    margin-bottom: 10px;
+}
 
-    .icon {
-        font-size: 2rem;
-    }
+.row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    margin: 3px 0;
+}
+
+.label {
+    font-size: 0.7rem;
+    color: #666;
+    margin-top: 6px;
+}
 </style>
 </head>
 
 <body>
 
 <header>
-    🇳🇴 Værmelding (3 dager)
-    <div class="version">Versjon 1.0.0</div>
+    🇳🇴 Værmelding
+    <div class="version">Versjon 2.0.0</div>
 </header>
 
 <div class="container" id="weather"></div>
 
 <script>
 
-// 🔹 Locatie (vast)
 const lat = 58.79492656129151;
 const lon = 8.790772896300094;
 
-// 🔹 API URL (met juiste timezone)
-const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max&timezone=Europe%2FOslo`;
+const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max,sunshine_duration&timezone=Europe%2FOslo`;
 
-// 🔹 Weer icoontjes mapping
-function getIcon(code){
+function icon(code){
     if(code === 0) return "☀️";
-    if(code <= 3) return "⛅";
+    if(code <= 3) return "🌤️";
     if(code <= 48) return "☁️";
     if(code <= 67) return "🌧️";
     if(code <= 77) return "❄️";
-    if(code <= 82) return "🌦️";
-    if(code >= 95) return "⛈️";
-    return "🌍";
+    if(code <= 95) return "⛈️";
+    return "🌥️";
 }
 
-// 🔹 Datum formatter
-function formatDate(dateStr){
-    const date = new Date(dateStr + "T12:00:00");
-    return date.toLocaleDateString("no-NO", {
-        weekday: "long",
-        day: "numeric",
-        month: "long"
+function formatDate(d){
+    return new Date(d + "T12:00:00").toLocaleDateString("no-NO", {
+        weekday: "long"
     });
 }
 
-// 🔹 Data ophalen
 fetch(url)
-.then(res => res.json())
+.then(r => r.json())
 .then(data => {
 
     const container = document.getElementById("weather");
 
     for(let i = 0; i < 3; i++){
-        const day = document.createElement("div");
-        day.className = "card";
 
-        day.innerHTML = `
+        const sunshineHours = (data.daily.sunshine_duration[i] / 3600).toFixed(1);
+
+        const card = document.createElement("div");
+        card.className = "card";
+
+        card.innerHTML = `
             <div class="day">${formatDate(data.daily.time[i])}</div>
 
-            <div class="weather-main">
-                <div class="temp">
-                    ${Math.round(data.daily.temperature_2m_max[i])}° / 
-                    ${Math.round(data.daily.temperature_2m_min[i])}°
-                </div>
-                <div class="icon">
-                    ${getIcon(data.daily.weathercode[i])}
-                </div>
-            </div>
+            <div class="icon">${icon(data.daily.weathercode[i])}</div>
 
-            <div class="details">
-                💧 Nedbør: ${data.daily.precipitation_sum[i]} mm<br>
-                💨 Vind: ${data.daily.windspeed_10m_max[i]} km/t<br>
-                🕒 Tidsone: Europe/Oslo (UTC+1 / UTC+2)
-            </div>
+            <div class="temp-max">${Math.round(data.daily.temperature_2m_max[i])}°C</div>
+            <div class="temp-min">${Math.round(data.daily.temperature_2m_min[i])}°C</div>
+
+            <div class="row">🌧️ ${data.daily.precipitation_sum[i]} mm</div>
+            <div class="row">💨 ${data.daily.windspeed_10m_max[i]} m/s</div>
+            <div class="row">☀️ ${sunshineHours} h</div>
+
+            <div class="label">UV ${data.daily.uv_index_max[i]}</div>
         `;
 
-        container.appendChild(day);
+        container.appendChild(card);
     }
 
-})
-.catch(err => {
-    document.getElementById("weather").innerHTML = "Kunne ikke hente værdata.";
-    console.error(err);
 });
 
 </script>
