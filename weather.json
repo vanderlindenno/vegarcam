@@ -1,20 +1,20 @@
 { "temperature": 0, "humidity": 0, "forecast": [
   {
     "date": "2026-05-22",
-    "min": 8.2,
-    "max": 21.4,
+    "min": 8.5,
+    "max": 21.3,
     "rain": 0,
-    "wind": 2.066666666666667,
+    "wind": 2.058333333333333,
     "uv": 0,
     "sun": 16,
     "icon": "partlycloudy_day"
   },
   {
     "date": "2026-05-23",
-    "min": 12.9,
+    "min": 12.7,
     "max": 19.6,
-    "rain": 3.5,
-    "wind": 1.9812499999999997,
+    "rain": 3.6000000000000005,
+    "wind": 2.00625,
     "uv": 0,
     "sun": 7,
     "icon": "cloudy"
