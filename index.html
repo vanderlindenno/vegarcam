@@ -24,7 +24,6 @@ header {
 
 .wrapper { max-width:900px; width:100%; }
 
-/* CARDS */
 .current-card {
     background:white;
     border-radius:20px;
@@ -33,7 +32,6 @@ header {
     margin-top:12px;
 }
 
-/* CURRENT GRID */
 .current-grid {
     display:flex;
     gap:30px;
@@ -48,21 +46,20 @@ header {
     height:200px !important;
 }
 
-/* HISTORIE */
+/* Historiek */
 .history-card {
     display:flex;
     justify-content:center;
-    align-items:center;
     padding:30px;
 }
 
 #historyChart {
-    width:100%;
     max-width:800px;
+    width:100%;
     height:220px !important;
 }
 
-/* RADAR */
+/* Radar */
 .radar-card {
     position:relative;
     padding:0;
@@ -73,7 +70,6 @@ header {
     width:100%;
     height:420px;
     border:none;
-    display:block;
 }
 
 .radar-overlay {
@@ -88,7 +84,6 @@ header {
     z-index:2;
 }
 
-/* TEXT */
 .temp { font-size:3rem; font-weight:bold; }
 .day { color:#f97316; font-weight:bold; }
 .icon { font-size:2.5rem; margin:5px 0; }
@@ -96,7 +91,6 @@ header {
 .row { font-size:0.9rem; margin:4px 0; }
 .label { font-size:0.75rem; color:#666; }
 
-/* FORECAST */
 .container {
     display:flex;
     gap:16px;
@@ -114,14 +108,15 @@ header {
 
 .temp-max { font-size:1.6rem; font-weight:bold; }
 .temp-min { color:#777; }
+
 </style>
 </head>
 
 <body>
 
 <header>
-    🇳🇴 Værmelding
-    <div class="label">Versjon 15.0</div>
+🇳🇴 Værmelding
+<div class="label">Versjon 16.0</div>
 </header>
 
 <div class="wrapper">
@@ -130,19 +125,20 @@ header {
 <div id="current"></div>
 
 <h4>Værprognose</h4>
-<div class="container" id="weather"></div>
+<div id="weather" class="container"></div>
 
 <h4>Historisk vær</h4>
 <div class="current-card history-card">
-    <canvas id="historyChart"></canvas>
+<canvas id="historyChart"></canvas>
 </div>
 
 <h4>Nedbør radar</h4>
 <div class="current-card radar-card">
+<div class="radar-overlay">🌧️ Live nedbør radar</div>
 
-    <div class="radar-overlay">🌧️ Live nedbør radar</div>
-
-    <iframe src="https://embed.windy.com/embed2.html?lat=58.79&lon=8.79&zoom=7&overlay=rain&level=surface&menu=&message=true"></iframe>
+<iframe
+src="https://embed.windy.com/embed2.html?lat=58.79&lon=8.79&zoom=7&overlay=rain&level=surface&menu=&message=true">
+</iframe>
 
 </div>
 
@@ -150,27 +146,26 @@ header {
 
 <script>
 
-// helpers
 function getTempColor(t){
-    if(t<=0) return "#3b82f6";
-    if(t<=10) return "#60a5fa";
-    if(t<=20) return "#f97316";
-    return "#ef4444";
+if(t<=0) return "#3b82f6";
+if(t<=10) return "#60a5fa";
+if(t<=20) return "#f97316";
+return "#ef4444";
 }
 
 function getSkyText(c){
-    if(c<20) return "Skyfri";
-    if(c<50) return "Delvis skyet";
-    if(c<80) return "Skyet";
-    return "Overskyet";
+if(c<20) return "Skyfri";
+if(c<50) return "Delvis skyet";
+if(c<80) return "Skyet";
+return "Overskyet";
 }
 
 function getIcon(code){
-    if(code === 0) return "☀️";
-    if(code <= 3) return "🌤️";
-    if(code <= 48) return "☁️";
-    if(code <= 67) return "🌧️";
-    return "🌥️";
+if(code === 0) return "☀️";
+if(code <= 3) return "🌤️";
+if(code <= 48) return "☁️";
+if(code <= 67) return "🌧️";
+return "🌥️";
 }
 
 const lat=58.79, lon=8.79;
@@ -187,6 +182,8 @@ fetch(url)
 const current=await cRes.json();
 const data=await fRes.json();
 
+const feels = (current.temperature - (1 - current.humidity/100)*2).toFixed(1);
+
 // CURRENT
 document.getElementById("current").innerHTML=`
 <div class="current-card">
@@ -200,6 +197,7 @@ document.getElementById("current").innerHTML=`
 ${Math.round(current.temperature)}°C
 </div>
 
+<div class="row">🌡️ Føles som ${feels}°</div>
 <div class="row">💧 ${current.humidity}%</div>
 <div class="row">📊 ${current.pressure} hPa</div>
 </div>
@@ -216,7 +214,7 @@ Oppdatert ${new Date(current.updated).toLocaleTimeString("no-NO")}
 </div>
 `;
 
-// CHART
+// chart
 const now=new Date().getHours();
 const temps=data.hourly.temperature_2m.slice(now,now+12);
 const times=data.hourly.time.slice(now,now+12)
@@ -224,20 +222,29 @@ const times=data.hourly.time.slice(now,now+12)
 
 const ctx=document.getElementById("chart").getContext("2d");
 
+const gradient=ctx.createLinearGradient(0,0,0,200);
+gradient.addColorStop(0,"rgba(249,115,22,0.5)");
+gradient.addColorStop(1,"rgba(249,115,22,0)");
+
 new Chart(ctx,{
 type:"line",
-data:{labels:times,datasets:[{
+data:{
+labels:times,
+datasets:[{
 data:temps,
 borderColor:"#f97316",
+backgroundColor:gradient,
+fill:true,
 tension:0.4
-}]},
+}]
+},
 options:{
 plugins:{legend:{display:false}},
 scales:{y:{ticks:{callback:v=>v+"°"}}}
 }
 });
 
-// FORECAST
+// forecast
 const container=document.getElementById("weather");
 container.innerHTML="";
 
@@ -246,16 +253,31 @@ for(let i=1;i<=3;i++){
 const max=data.daily.temperature_2m_max[i];
 const min=data.daily.temperature_2m_min[i];
 const cloud=data.daily.cloudcover_mean[i];
+const sun=100-cloud;
+
+const rain=data.daily.precipitation_sum[i];
+const wind=data.daily.windspeed_10m_max[i];
+const uv=data.daily.uv_index_max[i];
 
 const card=document.createElement("div");
 card.className="card";
 
 card.innerHTML=`
 <div class="day">${new Date(data.daily.time[i]).toLocaleDateString("no-NO",{weekday:"long"})}</div>
+
 <div class="icon">${getIcon(data.daily.weathercode[i])}</div>
+
 <div class="temp-max" style="color:${getTempColor(max)}">${Math.round(max)}°</div>
 <div class="temp-min">${Math.round(min)}°</div>
+
 <div class="label">${getSkyText(cloud)}</div>
+
+<div class="label">
+☀️ ${sun}% • ☁️ ${cloud}%<br>
+🌧️ ${rain} mm<br>
+💨 ${wind} m/s<br>
+UV ${uv}
+</div>
 `;
 
 container.appendChild(card);
@@ -263,22 +285,17 @@ container.appendChild(card);
 
 }
 
-// HISTORIE
+// historiek
 async function loadHistory(){
 
-try {
-
+try{
 const res = await fetch("public/history.json");
 const history = await res.json();
-
-const labels = history.daily.time.map(d =>
-new Date(d).toLocaleDateString("no-NO",{day:"numeric",month:"short"})
-);
 
 new Chart(document.getElementById("historyChart"),{
 type:"line",
 data:{
-labels:labels,
+labels:history.daily.time,
 datasets:[{
 data:history.daily.temperature_2m_mean,
 borderColor:"#ef4444",
@@ -287,12 +304,10 @@ tension:0.4
 },
 options:{plugins:{legend:{display:false}}}
 });
-
-} catch(e){}
+}catch(e){}
 
 }
 
-// INIT
 init();
 loadHistory();
 
@@ -300,4 +315,3 @@ loadHistory();
 
 </body>
 </html>
-``
