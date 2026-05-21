@@ -1,56 +1,40 @@
-#################################################
-# 🔒 TOEGANG TOT BESTANDEN
-#################################################
-homeassistant:
-  allowlist_external_dirs:
-    - "/config/www"
+name: Update Weather JSON
 
-#################################################
-# 📄 JSON EXPORT (FILE WRITER)
-#################################################
-notify:
-  - platform: file
-    name: weather_export
-    filename: /config/www/public/current.json
-    timestamp: false
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
 
-#################################################
-# 🌡️ TEMPLATE SENSORS (OPTIONEEL MAAR NETJES)
-#################################################
-template:
-  - sensor:
+jobs:
+  update-weather:
+    runs-on: ubuntu-latest
 
-      - name: "Outdoor Temperature Clean"
-        state: "{{ states('sensor.netatmo_outdoor_temperature') | float(0) }}"
-        unit_of_measurement: "°C"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: "Outdoor Humidity Clean"
-        state: "{{ states('sensor.netatmo_outdoor_humidity') | float(0) }}"
-        unit_of_measurement: "%"
+      - name: Fetch weather data
+        run: |
+          curl "https://api.open-meteo.com/v1/forecast?latitude=58.79&longitude=8.79&current_weather=true" > weather.json
 
-      - name: "Outdoor Pressure Clean"
-        state: "{{ states('sensor.netatmo_pressure') | float(0) }}"
-        unit_of_measurement: "hPa"
+      - name: Create current.json
+        run: |
+          TEMP=$(jq '.current_weather.temperature' weather.json)
+          TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-#################################################
-# 🔁 AUTOMATION (JSON SCHRIJVEN)
-#################################################
-automation:
-  - alias: "Weather JSON Export"
-    description: "Schrijft weather data naar JSON voor dashboard"
-    mode: single
+          cat <<EOF > public/current.json
+          {
+            "temperature": $TEMP,
+            "humidity": 0,
+            "pressure": 0,
+            "updated": "$TIME"
+          }
+          EOF
 
-    trigger:
-      - platform: time_pattern
-        minutes: "/5"
-
-    action:
-      - service: notify.weather_export
-        data:
-          message: >
-            {
-              "temperature": {{ states('sensor.outdoor_temperature_clean') | float(0) }},
-              "humidity": {{ states('sensor.outdoor_humidity_clean') | float(0) }},
-              "pressure": {{ states('sensor.outdoor_pressure_clean') | float(0) }},
-              "updated": "{{ now().isoformat() }}"
-            }
+      - name: Commit & push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add public/current.json
+          git commit -m "Update weather data" || echo "No changes"
+          git push
