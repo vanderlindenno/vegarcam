@@ -5,56 +5,65 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Værmelding</title>
 
-<meta name="version" content="2.0.0">
+<meta name="version" content="2.1.0">
 
 <style>
 body {
+    margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     background: #f2f4f7;
-    margin: 0;
-    color: #333;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
+/* HEADER */
 header {
     text-align: center;
-    padding: 15px;
-    font-weight: bold;
+    margin-top: 20px;
 }
 
 .version {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: #888;
 }
 
+/* CONTAINER */
 .container {
     display: flex;
-    gap: 12px;
-    overflow-x: auto;
-    padding: 12px;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    max-width: 900px;
+    padding: 20px;
 }
 
+/* CARD */
 .card {
-    min-width: 200px;
-    background: #fff;
-    border-radius: 18px;
-    padding: 16px;
+    width: 220px;
+    background: white;
+    border-radius: 20px;
+    padding: 18px;
     text-align: center;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.08);
 }
 
+/* TEXT STYLES */
 .day {
     color: #f97316;
     font-weight: 600;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
 }
 
 .icon {
-    font-size: 2rem;
+    font-size: 2.2rem;
     margin: 10px 0;
 }
 
 .temp-max {
-    font-size: 1.6rem;
+    font-size: 1.7rem;
     font-weight: bold;
 }
 
@@ -63,19 +72,20 @@ header {
     margin-bottom: 10px;
 }
 
+/* INFO ROWS */
 .row {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 6px;
-    font-size: 0.85rem;
-    margin: 3px 0;
+    gap: 8px;
+    font-size: 0.9rem;
+    margin: 4px 0;
 }
 
 .label {
-    font-size: 0.7rem;
+    margin-top: 8px;
+    font-size: 0.75rem;
     color: #666;
-    margin-top: 6px;
 }
 </style>
 </head>
@@ -84,7 +94,7 @@ header {
 
 <header>
     🇳🇴 Værmelding
-    <div class="version">Versjon 2.0.0</div>
+    <div class="version">Versjon 2.1.0</div>
 </header>
 
 <div class="container" id="weather"></div>
@@ -96,46 +106,48 @@ const lon = 8.790772896300094;
 
 const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max,sunshine_duration&timezone=Europe%2FOslo`;
 
-function icon(code){
+/* ICONS */
+function getIcon(code){
     if(code === 0) return "☀️";
     if(code <= 3) return "🌤️";
     if(code <= 48) return "☁️";
     if(code <= 67) return "🌧️";
     if(code <= 77) return "❄️";
-    if(code <= 95) return "⛈️";
+    if(code >= 95) return "⛈️";
     return "🌥️";
 }
 
-function formatDate(d){
-    return new Date(d + "T12:00:00").toLocaleDateString("no-NO", {
-        weekday: "long"
-    });
+/* DATE */
+function formatDay(dateStr){
+    return new Date(dateStr + "T12:00:00")
+        .toLocaleDateString("no-NO", { weekday: "long" });
 }
 
+/* FETCH DATA */
 fetch(url)
-.then(r => r.json())
+.then(res => res.json())
 .then(data => {
 
     const container = document.getElementById("weather");
 
     for(let i = 0; i < 3; i++){
 
-        const sunshineHours = (data.daily.sunshine_duration[i] / 3600).toFixed(1);
+        const sunHours = (data.daily.sunshine_duration[i] / 3600).toFixed(1);
 
         const card = document.createElement("div");
         card.className = "card";
 
         card.innerHTML = `
-            <div class="day">${formatDate(data.daily.time[i])}</div>
+            <div class="day">${formatDay(data.daily.time[i])}</div>
 
-            <div class="icon">${icon(data.daily.weathercode[i])}</div>
+            <div class="icon">${getIcon(data.daily.weathercode[i])}</div>
 
             <div class="temp-max">${Math.round(data.daily.temperature_2m_max[i])}°C</div>
             <div class="temp-min">${Math.round(data.daily.temperature_2m_min[i])}°C</div>
 
             <div class="row">🌧️ ${data.daily.precipitation_sum[i]} mm</div>
             <div class="row">💨 ${data.daily.windspeed_10m_max[i]} m/s</div>
-            <div class="row">☀️ ${sunshineHours} h</div>
+            <div class="row">☀️ ${sunHours} h</div>
 
             <div class="label">UV ${data.daily.uv_index_max[i]}</div>
         `;
@@ -143,6 +155,9 @@ fetch(url)
         container.appendChild(card);
     }
 
+})
+.catch(() => {
+    document.getElementById("weather").innerHTML = "Kunne ikke hente værdata.";
 });
 
 </script>
