@@ -24,54 +24,53 @@ header {
 
 .wrapper { max-width:900px; width:100%; }
 
-/* current */
 .current-card {
     background:white;
     border-radius:20px;
     padding:20px;
     box-shadow:0 8px 18px rgba(0,0,0,0.08);
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
     margin-top:10px;
 }
 
-.current-grid {
-    display:flex;
-    gap:30px;
-    align-items:center;
+/* RADAR */
+.radar-card {
+    position: relative;
+    overflow: hidden;
+    padding: 0;
 }
 
-.left { flex:0 0 220px; }
-.right { flex:1; }
-
-.right canvas,
-#historyChart {
+.radar-card iframe {
     width:100%;
-    height:220px !important;
+    height:420px;
+    border:none;
 }
 
-/* historiek centreren */
-.history-card {
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    padding:30px;
+/* tooltip overlay */
+.radar-overlay {
+    position:absolute;
+    top:10px;
+    left:10px;
+    background:rgba(0,0,0,0.6);
+    color:white;
+    padding:6px 10px;
+    border-radius:10px;
+    font-size:0.8rem;
 }
 
-#historyChart {
-    max-width:800px;
+/* alert */
+.alert {
+    margin-top:10px;
+    padding:10px;
+    border-radius:12px;
+    font-size:0.9rem;
+    text-align:center;
 }
 
-/* tekst */
-.temp { font-size:3rem; font-weight:bold; }
-.day { color:#f97316; font-weight:bold; }
+.alert.rain {
+    background:#e0f2fe;
+    color:#0369a1;
+}
 
-.icon { font-size:2.5rem; margin:5px 0; }
-.row { font-size:0.9rem; margin:4px 0; }
-.label { font-size:0.75rem; color:#666; }
-
-/* forecast */
 .container {
     display:flex;
     gap:16px;
@@ -89,6 +88,8 @@ header {
 
 .temp-max { font-size:1.6rem; font-weight:bold; }
 .temp-min { color:#777; }
+
+.label { font-size:0.75rem; color:#666; }
 </style>
 </head>
 
@@ -96,20 +97,27 @@ header {
 
 <header>
     🇳🇴 Værmelding
-    <div class="label">Versjon 13.0</div>
+    <div class="label">Versjon 14.0</div>
 </header>
 
 <div class="wrapper">
 
-<h4>Nåværende måling</h4>
-<div id="current"></div>
-
 <h4>Værprognose</h4>
 <div class="container" id="weather"></div>
 
-<h4>Historisk vær</h4>
-<div class="current-card history-card">
-    <canvas id="historyChart"></canvas>
+<div id="rainAlert"></div>
+
+<h4>Nedbør radar</h4>
+<div class="current-card radar-card">
+
+    <div class="radar-overlay">
+        🌧️ Live nedbør radar
+    </div>
+
+    <iframe 
+    src="https://embed.windy.com/embed2.html?lat=58.79&lon=8.79&zoom=7&overlay=rain&level=surface&menu=&message=true">
+    </iframe>
+
 </div>
 
 </div>
@@ -124,6 +132,7 @@ function getTempColor(t){
     return "#ef4444";
 }
 
+// tekst
 function getSkyText(c){
     if(c<20) return "Skyfri";
     if(c<50) return "Delvis skyet";
@@ -131,6 +140,7 @@ function getSkyText(c){
     return "Overskyet";
 }
 
+// icoon
 function getIcon(code){
     if(code === 0) return "☀️";
     if(code <= 3) return "🌤️";
@@ -141,98 +151,18 @@ function getIcon(code){
 
 const lat=58.79, lon=8.79;
 
-const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max,cloudcover_mean&timezone=Europe%2FOslo`;
+const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=precipitation&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,cloudcover_mean&timezone=Europe%2FOslo`;
 
 async function init(){
 
-const [cRes,fRes]=await Promise.all([
-fetch("public/current.json"),
-fetch(url)
-]);
+const res = await fetch(url);
+const data = await res.json();
 
-const current=await cRes.json();
-const data=await fRes.json();
+//////////////////////////////////////////////////
+// 🌧️ FORECAST (kort)
+//////////////////////////////////////////////////
 
-const color=getTempColor(current.temperature);
-
-// CURRENT
-document.getElementById("current").innerHTML=`
-<div class="current-card">
-<div class="current-grid">
-
-<div class="left">
-<div class="day">I dag</div>
-<div class="icon">${getIcon(data.daily.weathercode[0])}</div>
-
-<div class="temp" style="color:${color}">
-${Math.round(current.temperature)}°C
-</div>
-
-<div class="row">🌡️ Føles som ${current.temperature}°</div>
-<div class="row">💧 ${current.humidity}%</div>
-<div class="row">📊 ${current.pressure} hPa</div>
-</div>
-
-<div class="right">
-<canvas id="chart"></canvas>
-</div>
-
-</div>
-
-<div class="label">
-Oppdatert ${new Date(current.updated).toLocaleTimeString("no-NO")}
-</div>
-</div>
-`;
-
-// current grafiek
-const now=new Date().getHours();
-const temps=data.hourly.temperature_2m.slice(now,now+12);
-const times=data.hourly.time.slice(now,now+12)
-    .map(t=>new Date(t).getHours());
-
-const ctx=document.getElementById("chart").getContext("2d");
-
-const gradient=ctx.createLinearGradient(0,0,0,200);
-gradient.addColorStop(0,"rgba(249,115,22,0.5)");
-gradient.addColorStop(1,"rgba(249,115,22,0)");
-
-const nowLine={
-id:'nowLine',
-afterDraw(chart){
-const {ctx,chartArea:{top,bottom},scales:{x}}=chart;
-const i=chart.data.labels.indexOf(now);
-if(i===-1) return;
-const xPos=x.getPixelForValue(i);
-ctx.beginPath();
-ctx.moveTo(xPos,top);
-ctx.lineTo(xPos,bottom);
-ctx.strokeStyle="red";
-ctx.stroke();
-}
-};
-
-new Chart(ctx,{
-type:"line",
-data:{
-labels:times,
-datasets:[{
-data:temps,
-borderColor:"#f97316",
-backgroundColor:gradient,
-fill:true,
-tension:0.4
-}]
-},
-options:{
-plugins:{legend:{display:false}},
-scales:{y:{ticks:{callback:v=>v+"°"}}}
-},
-plugins:[nowLine]
-});
-
-// forecast
-const container=document.getElementById("weather");
+const container = document.getElementById("weather");
 container.innerHTML="";
 
 for(let i=1;i<=3;i++){
@@ -240,105 +170,40 @@ for(let i=1;i<=3;i++){
 const max=data.daily.temperature_2m_max[i];
 const min=data.daily.temperature_2m_min[i];
 const cloud=data.daily.cloudcover_mean[i];
-const sun=100-cloud;
 
 const card=document.createElement("div");
 card.className="card";
 
 card.innerHTML=`
-<div class="day">${new Date(data.daily.time[i]).toLocaleDateString("no-NO",{weekday:"long"})}</div>
-
-<div class="icon">${getIcon(data.daily.weathercode[i])}</div>
-
+<div>${new Date(data.daily.time[i]).toLocaleDateString("no-NO",{weekday:"long"})}</div>
+<div>${getIcon(data.daily.weathercode[i])}</div>
 <div class="temp-max" style="color:${getTempColor(max)}">${Math.round(max)}°</div>
 <div class="temp-min">${Math.round(min)}°</div>
-
 <div class="label">${getSkyText(cloud)}</div>
-
-<div class="label">
-☀️ ${sun}% • ☁️ ${cloud}%<br>
-🌧️ ${data.daily.precipitation_sum[i]} mm<br>
-💨 ${data.daily.windspeed_10m_max[i]} m/s<br>
-UV ${data.daily.uv_index_max[i]}
-</div>
 `;
 
 container.appendChild(card);
 }
 
+//////////////////////////////////////////////////
+// 🌧️ REGEN ALERT (nieuw!)
+//////////////////////////////////////////////////
+
+const rainNext = data.hourly.precipitation.slice(0,6);
+
+const rainComing = rainNext.some(v => v > 0.5);
+
+if(rainComing){
+    document.getElementById("rainAlert").innerHTML = `
+    <div class="alert rain">
+    🌧️ Regn sannsynlig innen 6 timer
+    </div>
+    `;
 }
-
-// HISTORIEK MET DAG MARKERING
-async function loadHistory(){
-
-const res = await fetch("public/history.json");
-const history = await res.json();
-
-const labels = history.daily.time.map(d =>
-    new Date(d).toLocaleDateString("no-NO",{day:"numeric",month:"short"})
-);
-
-const temps = history.daily.temperature_2m_mean;
-const rain = history.daily.precipitation_sum;
-
-// ✅ index van midden = vandaag
-const todayIndex = Math.floor(labels.length / 2);
-
-const highlightPlugin = {
-id:'highlightDay',
-beforeDraw(chart){
-const {ctx,chartArea:{top,bottom},scales:{x}}=chart;
-
-const xPos = x.getPixelForValue(todayIndex);
-
-ctx.save();
-ctx.fillStyle="rgba(239,68,68,0.08)";
-ctx.fillRect(xPos-10, top, 20, bottom-top);
-ctx.restore();
-}
-};
-
-new Chart(document.getElementById("historyChart"),{
-data:{
-labels:labels,
-datasets:[
-{
-type:"line",
-data:temps,
-borderColor:"#ef4444",
-tension:0.4,
-yAxisID:"y"
-},
-{
-type:"bar",
-data:rain,
-backgroundColor:"rgba(59,130,246,0.5)",
-yAxisID:"y1"
-}
-]
-},
-options:{
-plugins:{legend:{display:false}},
-scales:{
-y:{
-position:"left",
-ticks:{callback:v=>v+"°"}
-},
-y1:{
-position:"right",
-grid:{drawOnChartArea:false},
-ticks:{callback:v=>v+" mm"}
-}
-}
-},
-plugins:[highlightPlugin]
-});
 
 }
 
-// init
 init();
-loadHistory();
 
 </script>
 
