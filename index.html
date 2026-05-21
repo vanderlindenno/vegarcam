@@ -5,20 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Værmelding</title>
 
-<meta name="version" content="3.2.1">
+<meta name="version" content="4.0">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     background: #f2f4f7;
-
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
-/* HEADER */
 header {
     text-align: center;
     margin-top: 20px;
@@ -29,46 +29,25 @@ header {
     color: #888;
 }
 
-/* SECTION TITLES */
 .section-title {
     font-size: 0.9rem;
     color: #666;
-    text-align: center;
     margin-top: 15px;
+    text-align: center;
 }
 
-/* MAIN WIDTH FIX (belangrijk!) */
 .wrapper {
     width: 100%;
     max-width: 900px;
 }
 
-/* CURRENT */
-#current {
-    display: flex;
-    justify-content: center;
-}
-
-/* FORECAST CONTAINER */
 .container {
     display: flex;
-    justify-content: space-between;
     gap: 16px;
     padding: 20px 0;
 }
 
-/* CURRENT CARD = VOLLE BREEDTE */
-.current-card {
-    width: 100%;
-    background: white;
-    border-radius: 20px;
-    padding: 18px;
-    text-align: center;
-    box-shadow: 0 8px 18px rgba(0,0,0,0.08);
-}
-
-/* FORECAST CARDS */
-.card {
+.current-card, .card {
     flex: 1;
     background: white;
     border-radius: 20px;
@@ -77,38 +56,26 @@ header {
     box-shadow: 0 8px 18px rgba(0,0,0,0.08);
 }
 
-/* TEXT */
 .day {
     color: #f97316;
     font-weight: 600;
-    margin-bottom: 10px;
 }
 
 .icon {
-    font-size: 2.2rem;
-    margin: 10px 0;
+    font-size: 2rem;
 }
 
 .temp-max {
-    font-size: 1.7rem;
+    font-size: 2rem;
     font-weight: bold;
 }
 
-.temp-min {
-    color: #777;
-    margin-bottom: 10px;
-}
-
 .row {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
     font-size: 0.9rem;
     margin: 4px 0;
 }
 
 .label {
-    margin-top: 8px;
     font-size: 0.75rem;
     color: #666;
 }
@@ -119,29 +86,27 @@ header {
 
 <header>
     🇳🇴 Værmelding
-    <div class="version">Versjon 3.2.1</div>
+    <div class="version">Versjon 4.0</div>
 </header>
 
 <div class="wrapper">
 
-    <div class="section-title">Nåværende måling</div><br>
-    <div id="current"></div>
+<div class="section-title">Nåværende måling</div>
+<div id="current"></div>
 
-    <div class="section-title">Værprognose</div>
-    <div class="container" id="weather"></div>
+<div class="section-title">Værprognose</div>
+<div class="container" id="weather"></div>
 
 </div>
 
 <script>
 
-// LOCATIE
-const lat = 58.79492656129151;
-const lon = 8.790772896300094;
+const lat = 58.79;
+const lon = 8.79;
 
-// API
-const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max,sunshine_duration&timezone=Europe%2FOslo`;
+const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max,sunshine_duration&hourly=temperature_2m&timezone=Europe%2FOslo`;
 
-// ICONS
+// helpers
 function getIcon(code){
     if(code === 0) return "☀️";
     if(code <= 3) return "🌤️";
@@ -152,63 +117,100 @@ function getIcon(code){
     return "🌥️";
 }
 
-// DATE
-function formatDay(dateStr){
-    return new Date(dateStr + "T12:00:00")
-        .toLocaleDateString("no-NO", { weekday: "long" });
+function dewPoint(t, h){
+    const a=17.27, b=237.7;
+    const alpha=((a*t)/(b+t))+Math.log(h/100);
+    return ((b*alpha)/(a-alpha)).toFixed(1);
+}
+
+function feelsLike(t){
+    return t.toFixed(1);
+}
+
+function formatDay(date){
+    return new Date(date).toLocaleDateString("no-NO",{weekday:"long"});
 }
 
 // CURRENT
 fetch("public/current.json")
-.then(res => res.json())
-.then(data => {
+.then(r=>r.json())
+.then(data=>{
 
-    const updated = new Date(data.updated).toLocaleTimeString("no-NO", {
-        hour: "2-digit",
-        minute: "2-digit"
-    });
+    const updated = new Date(data.updated).toLocaleTimeString("no-NO",{hour:"2-digit",minute:"2-digit"});
 
     document.getElementById("current").innerHTML = `
-        <div class="current-card">
-            <div class="day">I dag</div>
-            <div class="icon">🌤️</div>
-            <div class="temp-max">${Math.round(data.temperature)}°C</div>
-            <div class="row">💧 ${data.humidity}%</div>
-            <div class="row">📊 ${data.pressure} hPa</div>
-            <div class="label">Oppdatert ${updated}</div>
-        </div>
+    <div class="current-card">
+        <div class="day">I dag</div>
+        <div class="icon">🌤️</div>
+
+        <div class="temp-max">${Math.round(data.temperature)}°C</div>
+
+        <div class="row">🌡️ Føles som ${feelsLike(data.temperature)}°C</div>
+        <div class="row">💧 ${data.humidity}%</div>
+        <div class="row">🌫️ Duggpunkt ${dewPoint(data.temperature, data.humidity)}°C</div>
+        <div class="row">📊 ${data.pressure} hPa</div>
+
+        <canvas id="chart" height="80"></canvas>
+
+        <div class="label">Oppdatert ${updated}</div>
+    </div>
     `;
 });
 
-// FORECAST
-fetch(url)
-.then(res => res.json())
-.then(data => {
+// FORECAST + GRAPH
+fetch(forecastUrl)
+.then(r=>r.json())
+.then(data=>{
+
+    const now = new Date().getHours();
+
+    const temps = data.hourly.temperature_2m.slice(now, now+12);
+    const times = data.hourly.time.slice(now, now+12)
+        .map(t=> new Date(t).getHours());
+
+    // chart
+    new Chart(document.getElementById("chart"),{
+        type:"line",
+        data:{
+            labels:times,
+            datasets:[{
+                data:temps,
+                borderColor:"#f97316",
+                backgroundColor:"rgba(249,115,22,0.2)",
+                fill:true,
+                tension:0.4,
+                pointRadius:2
+            }]
+        },
+        options:{
+            plugins:{legend:{display:false}},
+            scales:{y:{display:false}}
+        }
+    });
 
     const container = document.getElementById("weather");
 
-    for(let i = 0; i < 3; i++){
+    for(let i=0;i<3;i++){
+        const sun=(data.daily.sunshine_duration[i]/3600).toFixed(1);
 
-        const sunHours = (data.daily.sunshine_duration[i] / 3600).toFixed(1);
+        const card=document.createElement("div");
+        card.className="card";
 
-        const card = document.createElement("div");
-        card.className = "card";
-
-        card.innerHTML = `
+        card.innerHTML=`
             <div class="day">${formatDay(data.daily.time[i])}</div>
             <div class="icon">${getIcon(data.daily.weathercode[i])}</div>
-            <div class="temp-max">${Math.round(data.daily.temperature_2m_max[i])}°C</div>
-            <div class="temp-min">${Math.round(data.daily.temperature_2m_min[i])}°C</div>
+            <div class="temp-max">${Math.round(data.daily.temperature_2m_max[i])}°</div>
+            <div class="row">${Math.round(data.daily.temperature_2m_min[i])}°</div>
             <div class="row">🌧️ ${data.daily.precipitation_sum[i]} mm</div>
             <div class="row">💨 ${data.daily.windspeed_10m_max[i]} m/s</div>
-            <div class="row">☀️ ${sunHours} h</div>
+            <div class="row">☀️ ${sun} h</div>
             <div class="label">UV ${data.daily.uv_index_max[i]}</div>
         `;
 
         container.appendChild(card);
     }
-});
 
+});
 </script>
 
 </body>
