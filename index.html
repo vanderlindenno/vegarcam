@@ -46,7 +46,7 @@ header {
     height:200px !important;
 }
 
-/* Historiek */
+/* HISTORIE */
 .history-card {
     display:flex;
     justify-content:center;
@@ -54,12 +54,12 @@ header {
 }
 
 #historyChart {
-    max-width:800px;
     width:100%;
-    height:220px !important;
+    max-width:800px;
+    height:240px !important;
 }
 
-/* Radar */
+/* RADAR */
 .radar-card {
     position:relative;
     padding:0;
@@ -81,9 +81,9 @@ header {
     padding:6px 10px;
     border-radius:10px;
     font-size:0.8rem;
-    z-index:2;
 }
 
+/* TEXT */
 .temp { font-size:3rem; font-weight:bold; }
 .day { color:#f97316; font-weight:bold; }
 .icon { font-size:2.5rem; margin:5px 0; }
@@ -116,7 +116,7 @@ header {
 
 <header>
 🇳🇴 Værmelding
-<div class="label">Versjon 16.0</div>
+<div class="label">Versjon 17.0</div>
 </header>
 
 <div class="wrapper">
@@ -127,7 +127,7 @@ header {
 <h4>Værprognose</h4>
 <div id="weather" class="container"></div>
 
-<h4>Historisk vær</h4>
+<h4>Historisk vær fra i fjor</h4>
 <div class="current-card history-card">
 <canvas id="historyChart"></canvas>
 </div>
@@ -136,9 +136,7 @@ header {
 <div class="current-card radar-card">
 <div class="radar-overlay">🌧️ Live nedbør radar</div>
 
-<iframe
-src="https://embed.windy.com/embed2.html?lat=58.79&lon=8.79&zoom=7&overlay=rain&level=surface&menu=&message=true">
-</iframe>
+<iframe src="https://embed.windy.com/embed2.html?lat=58.79&lon=8.79&zoom=7&overlay=rain&level=surface&menu=&message=true"></iframe>
 
 </div>
 
@@ -182,6 +180,7 @@ fetch(url)
 const current=await cRes.json();
 const data=await fRes.json();
 
+// ✅ feels-like
 const feels = (current.temperature - (1 - current.humidity/100)*2).toFixed(1);
 
 // CURRENT
@@ -199,7 +198,7 @@ ${Math.round(current.temperature)}°C
 
 <div class="row">🌡️ Føles som ${feels}°</div>
 <div class="row">💧 ${current.humidity}%</div>
-<div class="row">📊 ${current.pressure} hPa</div>
+<div class="row">📊 ${current.pressure || "--"} hPa</div>
 </div>
 
 <div class="right">
@@ -214,7 +213,7 @@ Oppdatert ${new Date(current.updated).toLocaleTimeString("no-NO")}
 </div>
 `;
 
-// chart
+// GRAFIEK
 const now=new Date().getHours();
 const temps=data.hourly.temperature_2m.slice(now,now+12);
 const times=data.hourly.time.slice(now,now+12)
@@ -244,7 +243,7 @@ scales:{y:{ticks:{callback:v=>v+"°"}}}
 }
 });
 
-// forecast
+// FORECAST
 const container=document.getElementById("weather");
 container.innerHTML="";
 
@@ -259,12 +258,9 @@ const rain=data.daily.precipitation_sum[i];
 const wind=data.daily.windspeed_10m_max[i];
 const uv=data.daily.uv_index_max[i];
 
-const card=document.createElement("div");
-card.className="card";
-
-card.innerHTML=`
+container.innerHTML += `
+<div class="card">
 <div class="day">${new Date(data.daily.time[i]).toLocaleDateString("no-NO",{weekday:"long"})}</div>
-
 <div class="icon">${getIcon(data.daily.weathercode[i])}</div>
 
 <div class="temp-max" style="color:${getTempColor(max)}">${Math.round(max)}°</div>
@@ -278,32 +274,74 @@ card.innerHTML=`
 💨 ${wind} m/s<br>
 UV ${uv}
 </div>
-`;
-
-container.appendChild(card);
+</div>`;
 }
 
 }
 
-// historiek
+// HISTORIE
 async function loadHistory(){
 
 try{
+
 const res = await fetch("public/history.json");
 const history = await res.json();
 
+const labels = history.daily.time.map(d =>
+new Date(d).toLocaleDateString("no-NO",{day:"numeric",month:"short"})
+);
+
+const todayIndex = Math.floor(labels.length/2);
+
 new Chart(document.getElementById("historyChart"),{
-type:"line",
+
 data:{
-labels:history.daily.time,
-datasets:[{
+labels:labels,
+datasets:[
+{
+type:"line",
 data:history.daily.temperature_2m_mean,
 borderColor:"#ef4444",
-tension:0.4
-}]
+fill:false,
+tension:0.4,
+yAxisID:"y"
 },
-options:{plugins:{legend:{display:false}}}
+{
+type:"bar",
+data:history.daily.precipitation_sum,
+backgroundColor:"rgba(59,130,246,0.5)",
+yAxisID:"y1"
+}
+]
+},
+
+options:{
+plugins:{legend:{display:false}},
+scales:{
+y:{ticks:{callback:v=>v+"°"}},
+y1:{position:"right",grid:{drawOnChartArea:false},ticks:{callback:v=>v+" mm"}}
+}
+},
+
+plugins:[{
+id:"todayLine",
+afterDraw(chart){
+const {ctx,chartArea:{top,bottom},scales:{x}}=chart;
+const xPos = x.getPixelForValue(todayIndex);
+
+ctx.fillStyle="rgba(239,68,68,0.1)";
+ctx.fillRect(xPos-10, top, 20, bottom-top);
+
+ctx.beginPath();
+ctx.moveTo(xPos, top);
+ctx.lineTo(xPos, bottom);
+ctx.strokeStyle="red";
+ctx.stroke();
+}
+}]
+
 });
+
 }catch(e){}
 
 }
