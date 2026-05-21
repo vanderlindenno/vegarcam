@@ -44,7 +44,6 @@ jobs:
 
               uv: (map(.data.instant.details.ultraviolet_index_clear_sky // 0) | max),
 
-              # ✅ ALLEEN DAGUREN (06–21)
               sun: (
                 map(
                   if (.hour >= 6 and .hour <= 21
@@ -63,14 +62,28 @@ jobs:
           })
           ' forecast.json > forecast_out.json
 
-      - name: Create JSON
+      - name: Create current JSON (voor jouw HTML)
         run: |
-          echo "{ \"temperature\": 0, \"humidity\": 0, \"forecast\": $(cat forecast_out.json) }" > weather.json
+          TEMP=$(jq '.properties.timeseries[0].data.instant.details.air_temperature' forecast.json)
+          HUM=$(jq '.properties.timeseries[0].data.instant.details.relative_humidity' forecast.json)
+          PRESS=$(jq '.properties.timeseries[0].data.instant.details.air_pressure_at_sea_level' forecast.json)
+          TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          mkdir -p public
+
+          echo "{
+            \"temperature\": $TEMP,
+            \"humidity\": $HUM,
+            \"pressure\": $PRESS,
+            \"updated\": \"$TIME\"
+          }" > public/current.json
 
       - name: Commit
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add weather.json
-          git commit -m "update" || echo "no change"
+
+          git add public/current.json
+
+          git commit -m "update weather" || echo "no change"
           git push
