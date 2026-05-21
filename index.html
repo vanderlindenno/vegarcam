@@ -18,28 +18,16 @@ body {
 }
 
 .wrapper {
-    width: 100%;
     max-width: 900px;
+    width: 100%;
 }
 
-/* HEADER */
-header {
-    text-align: center;
-    margin-top: 20px;
-}
-
-.label {
-    font-size: 0.75rem;
-    color: #666;
-}
-
-/* CURRENT CARD */
+/* CURRENT */
 .current-card {
     background: white;
     border-radius: 20px;
     padding: 20px;
     box-shadow: 0 8px 18px rgba(0,0,0,0.08);
-
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -71,7 +59,6 @@ header {
 .day {
     color: #f97316;
     font-weight: bold;
-    font-size: 1.1rem;
 }
 
 .icon {
@@ -81,12 +68,6 @@ header {
 .temp {
     font-size: 3rem;
     font-weight: bold;
-    margin: 5px 0;
-}
-
-.row {
-    font-size: 0.9rem;
-    margin: 4px 0;
 }
 
 /* FORECAST */
@@ -103,35 +84,21 @@ header {
     padding: 16px;
     text-align: center;
     box-shadow: 0 8px 18px rgba(0,0,0,0.08);
-    transition: 0.2s;
 }
 
-.card:hover {
-    transform: translateY(-4px);
-}
+/* helpers */
+.label { font-size: 0.75rem; color:#666; }
+.row { font-size:0.9rem; margin:4px 0; }
 
-.temp-max {
-    font-size: 1.8rem;
-    font-weight: bold;
-}
+.temp-max { font-size:1.6rem; font-weight:bold; }
+.temp-min { color:#777; }
 
-.temp-min {
-    color: #777;
-}
-
-.details {
-    font-size: 0.85rem;
-    margin-top: 8px;
-}
 </style>
 </head>
 
 <body>
 
-<header>
-    🇳🇴 Værmelding
-    <div class="label">Versjon 8.0</div>
-</header>
+<h3>🇳🇴 Værmelding</h3>
 
 <div class="wrapper">
 
@@ -145,7 +112,7 @@ header {
 
 <script>
 
-// 🌡️ temperatuur kleur
+// 🌡️ kleur
 function getTempColor(temp){
     if(temp <= 0) return "#3b82f6";
     if(temp <= 10) return "#60a5fa";
@@ -183,16 +150,14 @@ async function init(){
 
     const tempColor = getTempColor(current.temperature);
 
-    // CURRENT CARD
+    // CURRENT UI
     document.getElementById("current").innerHTML = `
     <div class="current-card">
         <div class="current-grid">
 
             <div class="left">
-
                 <div class="day">I dag</div>
                 <div class="icon">🌤️</div>
-
                 <div class="temp" style="color:${tempColor}">
                     ${Math.round(current.temperature)}°C
                 </div>
@@ -201,7 +166,6 @@ async function init(){
                 <div class="row">💧 ${current.humidity}%</div>
                 <div class="row">🌫️ Duggpunkt ${current.dew_point ?? "-"}°C</div>
                 <div class="row">📊 ${current.pressure} hPa</div>
-
             </div>
 
             <div class="right">
@@ -216,21 +180,48 @@ async function init(){
     </div>
     `;
 
-    // 📊 GRAFIEK met Y-as
-    const now = new Date().getHours();
-    const temps = data.hourly.temperature_2m.slice(now, now+12);
-    const times = data.hourly.time.slice(now, now+12).map(t =>
-        new Date(t).getHours()
-    );
+    // CHART DATA
+    const nowHour = new Date().getHours();
+    const temps = data.hourly.temperature_2m.slice(nowHour, nowHour+12);
+    const times = data.hourly.time.slice(nowHour, nowHour+12)
+        .map(t => new Date(t).getHours());
 
-    new Chart(document.getElementById("chart"),{
+    // 📍 NU lijn plugin
+    const nowLine = {
+        id: 'nowLine',
+        afterDraw(chart) {
+            const {ctx, chartArea:{top,bottom}, scales:{x}} = chart;
+
+            const index = chart.data.labels.indexOf(nowHour);
+            if(index === -1) return;
+
+            const xPos = x.getPixelForValue(index);
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(xPos, top);
+            ctx.lineTo(xPos, bottom);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "red";
+            ctx.stroke();
+            ctx.restore();
+        }
+    };
+
+    // 🌈 gradient
+    const ctx = document.getElementById("chart").getContext("2d");
+    const gradient = ctx.createLinearGradient(0,0,0,200);
+    gradient.addColorStop(0, "rgba(249,115,22,0.5)");
+    gradient.addColorStop(1, "rgba(249,115,22,0)");
+
+    new Chart(ctx,{
         type:"line",
         data:{
             labels: times,
             datasets:[{
                 data: temps,
                 borderColor:"#f97316",
-                backgroundColor:"rgba(249,115,22,0.2)",
+                backgroundColor:gradient,
                 fill:true,
                 tension:0.4,
                 pointRadius:2
@@ -241,33 +232,26 @@ async function init(){
             scales:{
                 y:{
                     display:true,
-                    ticks:{
-                        callback: v => v + "°"
-                    },
-                    grid:{
-                        color:"rgba(0,0,0,0.05)"
-                    }
-                },
-                x:{
-                    ticks:{font:{size:10}}
+                    ticks:{ callback:v => v + "°" },
+                    grid:{ color:"rgba(0,0,0,0.05)" }
                 }
             }
-        }
+        },
+        plugins:[nowLine]
     });
 
-    // 🌤️ FORECAST DELUXE (fre/lør/søn)
+    // FORECAST
     const container = document.getElementById("weather");
     container.innerHTML = "";
 
     for(let i=1;i<=3;i++){
 
         const max = data.daily.temperature_2m_max[i];
-        const min = data.daily.temperature_2m_min[i];
         const color = getTempColor(max);
 
-        const card=document.createElement("div");
-        card.className="card";
+        const card = document.createElement("div");
 
+        card.className="card";
         card.innerHTML=`
             <div class="day">${formatDay(data.daily.time[i])}</div>
             <div class="icon">${getIcon(data.daily.weathercode[i])}</div>
@@ -275,23 +259,24 @@ async function init(){
             <div class="temp-max" style="color:${color}">
                 ${Math.round(max)}°
             </div>
-            <div class="temp-min">${Math.round(min)}°</div>
 
-            <div class="details">
-                🌧️ ${data.daily.precipitation_sum[i]} mm<br>
+            <div class="temp-min">
+                ${Math.round(data.daily.temperature_2m_min[i])}°
+            </div>
+
+            <div class="label">
+                🌧️ ${data.daily.precipitation_sum[i]} mm •
                 💨 ${data.daily.windspeed_10m_max[i]} m/s<br>
-                ☀️ ${(data.daily.sunshine_duration[i]/3600).toFixed(1)} h<br>
+                ☀️ ${(data.daily.sunshine_duration[i]/3600).toFixed(1)} h •
                 UV ${data.daily.uv_index_max[i]}
             </div>
         `;
 
         container.appendChild(card);
     }
-
 }
 
 init();
-
 </script>
 
 </body>
