@@ -1,33 +1,46 @@
-name: Weather JSON Update
+homeassistant:
+  allowlist_external_dirs:
+    - "/config/www"
 
-on:
-  schedule:
-    - cron: "*/5 * * * *"
-  workflow_dispatch:
+notify:
+  - platform: file
+    name: weather_export
+    filename: /config/www/public/current.json
+    timestamp: false
 
-jobs:
-  update-weather:
-    runs-on: ubuntu-latest
+automation:
+  - alias: "Weather JSON"
+    trigger:
+      - platform: time_pattern
+        minutes: "/5"
 
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+    action:
+      - service: notify.weather_export
+        data:
+          message: >
+            {
+              "temperature": {{ states('sensor.netatmo_outdoor_temperature') | float(0) }},
+              "humidity": {{ states('sensor.netatmo_outdoor_humidity') | float(0) }},
+              "pressure": {{ states('sensor.netatmo_pressure') | float(0) }},
 
-      - name: Create JSON file
-        run: |
-          cat <<EOF > public/current.json
-          {
-            "temperature": 12.5,
-            "humidity": 75,
-            "pressure": 1012,
-            "updated": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-          }
-          EOF
+              "dew_point": {{
+                (
+                  (237.7 * (
+                    (17.27 * states('sensor.netatmo_outdoor_temperature')|float(0)) /
+                    (237.7 + states('sensor.netatmo_outdoor_temperature')|float(0))
+                    + log(states('sensor.netatmo_outdoor_humidity')|float(0) / 100)
+                  ))
+                  /
+                  (
+                    17.27 - (
+                      (17.27 * states('sensor.netatmo_outdoor_temperature')|float(0)) /
+                      (237.7 + states('sensor.netatmo_outdoor_temperature')|float(0))
+                      + log(states('sensor.netatmo_outdoor_humidity')|float(0) / 100)
+                    )
+                  )
+                ) | round(1)
+              }},
 
-      - name: Commit & push
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add public/current.json
-          git commit -m "Update weather data" || echo "No changes"
-          git push
+              "updated": "{{ now().isoformat() }}"
+            }
+``
