@@ -10,59 +10,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Get forecast
+      - name: Fetch data from met.no
         run: |
           curl -s "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=58.795&lon=8.79" \
-          -H "User-Agent: weather-app" > forecast.json
+          -H "User-Agent: vegarcam-weather-app" > forecast.json
 
-          jq '
-          .properties.timeseries
-
-          | map(. + {
-              d: ((.time | fromdateiso8601 + 7200) | strftime("%Y-%m-%d")),
-              hour: ((.time | fromdateiso8601 + 7200) | strftime("%H") | tonumber)
-          })
-
-          | group_by(.d)
-          | .[1:4]
-
-          | map({
-
-              date: .[0].d,
-
-              min: (map(.data.instant.details.air_temperature) | min),
-              max: (map(.data.instant.details.air_temperature) | max),
-
-              rain: (map(.data.next_1_hours.details.precipitation_amount // 0) | add),
-
-              wind: (map(.data.instant.details.wind_speed) | add / length),
-
-              uv: (map(.data.instant.details.ultraviolet_index_clear_sky // 0) | max),
-
-              sun: (
-                map(
-                  if (.hour >= 6 and .hour <= 21
-                  and (.data.next_1_hours.details.precipitation_amount // 0) == 0)
-                  then 1 else 0 end
-                ) | add
-              ),
-
-              icon: (
-                map(.data.next_1_hours.summary.symbol_code // "cloudy")
-                | group_by(.)
-                | max_by(length)
-                | .[0]
-              )
-
-          })
-          ' forecast.json > forecast_out.json
-
-      - name: Create current JSON (voor jouw HTML)
+      - name: Create current weather JSON
         run: |
           TEMP=$(jq '.properties.timeseries[0].data.instant.details.air_temperature' forecast.json)
           HUM=$(jq '.properties.timeseries[0].data.instant.details.relative_humidity' forecast.json)
@@ -78,12 +37,12 @@ jobs:
             \"updated\": \"$TIME\"
           }" > public/current.json
 
-      - name: Commit
+      - name: Commit and push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
 
           git add public/current.json
 
-          git commit -m "update weather" || echo "no change"
+          git commit -m "Update current weather" || echo "No changes"
           git push
