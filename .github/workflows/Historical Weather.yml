@@ -1,0 +1,33 @@
+name: Historical Weather
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # 1x per dag
+  workflow_dispatch:
+
+jobs:
+  fetch-history:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Fetch 30 days history (last year)
+        run: |
+          START=$(date -d "-15 days -1 year" +%Y-%m-%d)
+          END=$(date -d "+15 days -1 year" +%Y-%m-%d)
+
+          curl "https://archive-api.open-meteo.com/v1/archive?latitude=58.79&longitude=8.79&start_date=$START&end_date=$END&daily=temperature_2m_mean,precipitation_sum,weathercode&timezone=Europe%2FOslo" > history.json
+
+      - name: Save JSON
+        run: |
+          mkdir -p public
+          cp history.json public/history.json
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add public/history.json
+          git commit -m "Update history" || echo "No changes"
+          git push
