@@ -2,183 +2,153 @@
 <html lang="no">
 <head>
 <meta charset="UTF-8">
-<title>Vær Vegår</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Værmelding – Norge</title>
+
+<!-- Version -->
+<meta name="version" content="1.0.0">
 
 <style>
-body {
-  margin:0;
-  font-family:-apple-system;
-  background:#e9edf3;
-  color:#4a5568;
-}
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        margin: 0;
+        background: linear-gradient(to bottom, #2c5364, #0f2027);
+        color: white;
+    }
 
-.container {
-  max-width:900px;
-  margin:auto;
-  padding:15px;
-}
+    header {
+        padding: 16px;
+        text-align: center;
+        font-size: 1.4rem;
+        font-weight: bold;
+    }
 
-h2 { margin-bottom:15px; }
+    .version {
+        font-size: 0.7rem;
+        opacity: 0.6;
+    }
 
-/* CURRENT */
-.current {
-  background:#f4f6fa;
-  border-radius:25px;
-  padding:20px;
-  margin-bottom:20px;
-  display:flex;
-  gap:15px;
-  align-items:center;
-}
+    .container {
+        padding: 12px;
+    }
 
-.current img { width:60px; }
+    .card {
+        background: rgba(255,255,255,0.08);
+        border-radius: 18px;
+        padding: 16px;
+        margin-bottom: 12px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
 
-.temp {
-  font-size:42px;
-  font-weight:bold;
-}
+    .day {
+        font-size: 1.2rem;
+        margin-bottom: 10px;
+    }
 
-/* FORECAST */
-.days {
-  display:flex;
-  gap:15px;
-}
+    .weather-main {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
 
-.day {
-  flex:1;
-  background:#f4f6fa;
-  border-radius:25px;
-  padding:20px;
-}
+    .temp {
+        font-size: 2rem;
+        font-weight: bold;
+    }
 
-.day-inner {
-  display:flex;
-  gap:15px;
-}
+    .details {
+        margin-top: 10px;
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
 
-.icon-col {
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  align-items:center;
-}
-
-.icon-col img { width:28px; }
-
-.data-col { flex:1; }
-
-.title { margin-bottom:6px; }
-.day:first-child .title { color:#f97316; }
-
-.max { font-size:26px; font-weight:600; }
-.min { color:#9aa3b2; margin-bottom:8px; }
-
-.row {
-  display:flex;
-  justify-content:space-between;
-  font-size:13px;
-}
-
-/* version */
-.version {
-  text-align:center;
-  margin-top:20px;
-  font-size:12px;
-  color:#888;
-}
-
-@media (max-width:600px) {
-  .days { flex-direction:column; }
-}
+    .icon {
+        font-size: 2rem;
+    }
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<header>
+    🇳🇴 Værmelding (3 dager)
+    <div class="version">Versjon 1.0.0</div>
+</header>
 
-<h2>📍 Vegår</h2>
-
-<div id="current" class="current">Laster...</div>
-<div id="forecast" class="days"></div>
-<div id="version" class="version"></div>
-
-</div>
+<div class="container" id="weather"></div>
 
 <script>
-const VERSION = new Date().toISOString();
 
-function iconUrl(icon) {
-  return `https://cdn.jsdelivr.net/gh/metno/weathericons/svg/${icon}.svg`;
+// 🔹 Locatie (vast)
+const lat = 58.79492656129151;
+const lon = 8.790772896300094;
+
+// 🔹 API URL (met juiste timezone)
+const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max&timezone=Europe%2FOslo`;
+
+// 🔹 Weer icoontjes mapping
+function getIcon(code){
+    if(code === 0) return "☀️";
+    if(code <= 3) return "⛅";
+    if(code <= 48) return "☁️";
+    if(code <= 67) return "🌧️";
+    if(code <= 77) return "❄️";
+    if(code <= 82) return "🌦️";
+    if(code >= 95) return "⛈️";
+    return "🌍";
 }
 
-async function load() {
-  try {
-    const res = await fetch("weather.json");
-    const data = await res.json();
+// 🔹 Datum formatter
+function formatDate(dateStr){
+    const date = new Date(dateStr + "T12:00:00");
+    return date.toLocaleDateString("no-NO", {
+        weekday: "long",
+        day: "numeric",
+        month: "long"
+    });
+}
 
-    if (!data.forecast) throw new Error("Ingen data");
+// 🔹 Data ophalen
+fetch(url)
+.then(res => res.json())
+.then(data => {
 
-    /* ✅ CURRENT (fallback als 0) */
-    const currentIcon = data.forecast[0]?.icon || "cloudy";
+    const container = document.getElementById("weather");
 
-    document.getElementById("current").innerHTML = `
-      <img src="${iconUrl(currentIcon)}v>
-        <div>Nå</div>
-        <div class="temp">
-          ${data.temperature ? Math.round(data.temperature) + "°C" : "—"}
-        </div>
-        <div>💧 ${data.humidity ? data.humidity + "%" : "—"}</div>
-      </div>
-    `;
+    for(let i = 0; i < 3; i++){
+        const day = document.createElement("div");
+        day.className = "card";
 
-    /* ✅ FORECAST */
-    const f = document.getElementById("forecast");
-    f.innerHTML = "";
+        day.innerHTML = `
+            <div class="day">${formatDate(data.daily.time[i])}</div>
 
-    data.forecast.forEach(d => {
-
-      const dag = new Date(d.date)
-        .toLocaleDateString("no-NO",{weekday:"long"});
-
-      const sun = d.sun ?? "-";
-
-      f.innerHTML += `
-        <div class="day">
-
-          <div class="day-inner">
-
-            <div class="icon-col">
-              <img src="${iconUrl(d            <img src="${icon         <img src="${iconUrl("wind<img src="${iconUrl("clearsky_day")}       <div class="data-col">
-
-              <div class="title">${dag}</div>
-
-              <div class="max">${Math.round(d.max)}°C</div>
-              <div class="min">${Math.round(d.min)}°C</div>
-
-              <div class="row">Nedbør <span>${d.rain.toFixed(1)} mm</span></div>
-              <div class="row">Vind <span>${d.wind.toFixed(1)} m/s</span></div>
-              <div class="row">Soltimer <span>${sun} h</span></div>
-              <div class="row">UV <span>${d.uv}</span></div>
-
+            <div class="weather-main">
+                <div class="temp">
+                    ${Math.round(data.daily.temperature_2m_max[i])}° / 
+                    ${Math.round(data.daily.temperature_2m_min[i])}°
+                </div>
+                <div class="icon">
+                    ${getIcon(data.daily.weathercode[i])}
+                </div>
             </div>
 
-          </div>
+            <div class="details">
+                💧 Nedbør: ${data.daily.precipitation_sum[i]} mm<br>
+                💨 Vind: ${data.daily.windspeed_10m_max[i]} km/t<br>
+                🕒 Tidsone: Europe/Oslo (UTC+1 / UTC+2)
+            </div>
+        `;
 
-        </div>
-      `;
-    });
+        container.appendChild(day);
+    }
 
-    document.getElementById("version").innerText = "Versjon: " + VERSION;
+})
+.catch(err => {
+    document.getElementById("weather").innerHTML = "Kunne ikke hente værdata.";
+    console.error(err);
+});
 
-  } catch (e) {
-    document.getElementById("current").innerText = "Feil ved lasting av værdata";
-    console.error(e);
-  }
-}
-
-load();
 </script>
 
 </body>
