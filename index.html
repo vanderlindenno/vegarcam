@@ -24,53 +24,79 @@ header {
 
 .wrapper { max-width:900px; width:100%; }
 
+/* CARDS */
 .current-card {
     background:white;
     border-radius:20px;
     padding:20px;
     box-shadow:0 8px 18px rgba(0,0,0,0.08);
-    margin-top:10px;
+    margin-top:12px;
+}
+
+/* CURRENT GRID */
+.current-grid {
+    display:flex;
+    gap:30px;
+    align-items:center;
+}
+
+.left { flex:0 0 220px; }
+.right { flex:1; }
+
+.right canvas {
+    width:100%;
+    height:200px !important;
+}
+
+/* HISTORIE */
+.history-card {
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:30px;
+}
+
+#historyChart {
+    width:100%;
+    max-width:800px;
+    height:220px !important;
 }
 
 /* RADAR */
 .radar-card {
-    position: relative;
-    overflow: hidden;
-    padding: 0;
+    position:relative;
+    padding:0;
+    overflow:hidden;
 }
 
 .radar-card iframe {
     width:100%;
     height:420px;
     border:none;
+    display:block;
 }
 
-/* tooltip overlay */
 .radar-overlay {
     position:absolute;
-    top:10px;
-    left:10px;
+    top:12px;
+    left:12px;
     background:rgba(0,0,0,0.6);
     color:white;
     padding:6px 10px;
     border-radius:10px;
     font-size:0.8rem;
+    z-index:2;
 }
 
-/* alert */
-.alert {
-    margin-top:10px;
-    padding:10px;
-    border-radius:12px;
-    font-size:0.9rem;
-    text-align:center;
-}
+/* TEXT */
+.temp { font-size:3rem; font-weight:bold; }
+.day { color:#f97316; font-weight:bold; }
+.icon { font-size:2.5rem; margin:5px 0; }
 
-.alert.rain {
-    background:#e0f2fe;
-    color:#0369a1;
-}
+.row { font-size:0.9rem; margin:4px 0; }
+.label { font-size:0.75rem; color:#666; }
 
+/* FORECAST */
 .container {
     display:flex;
     gap:16px;
@@ -88,8 +114,6 @@ header {
 
 .temp-max { font-size:1.6rem; font-weight:bold; }
 .temp-min { color:#777; }
-
-.label { font-size:0.75rem; color:#666; }
 </style>
 </head>
 
@@ -97,26 +121,28 @@ header {
 
 <header>
     🇳🇴 Værmelding
-    <div class="label">Versjon 14.0</div>
+    <div class="label">Versjon 15.0</div>
 </header>
 
 <div class="wrapper">
 
+<h4>Nåværende måling</h4>
+<div id="current"></div>
+
 <h4>Værprognose</h4>
 <div class="container" id="weather"></div>
 
-<div id="rainAlert"></div>
+<h4>Historisk vær</h4>
+<div class="current-card history-card">
+    <canvas id="historyChart"></canvas>
+</div>
 
 <h4>Nedbør radar</h4>
 <div class="current-card radar-card">
 
-    <div class="radar-overlay">
-        🌧️ Live nedbør radar
-    </div>
+    <div class="radar-overlay">🌧️ Live nedbør radar</div>
 
-    <iframe 
-    src="https://embed.windy.com/embed2.html?lat=58.79&lon=8.79&zoom=7&overlay=rain&level=surface&menu=&message=true">
-    </iframe>
+    <iframe src="https://embed.windy.com/embed2.html?lat=58.79&lon=8.79&zoom=7&overlay=rain&level=surface&menu=&message=true"></iframe>
 
 </div>
 
@@ -124,7 +150,7 @@ header {
 
 <script>
 
-// kleur
+// helpers
 function getTempColor(t){
     if(t<=0) return "#3b82f6";
     if(t<=10) return "#60a5fa";
@@ -132,7 +158,6 @@ function getTempColor(t){
     return "#ef4444";
 }
 
-// tekst
 function getSkyText(c){
     if(c<20) return "Skyfri";
     if(c<50) return "Delvis skyet";
@@ -140,7 +165,6 @@ function getSkyText(c){
     return "Overskyet";
 }
 
-// icoon
 function getIcon(code){
     if(code === 0) return "☀️";
     if(code <= 3) return "🌤️";
@@ -151,18 +175,70 @@ function getIcon(code){
 
 const lat=58.79, lon=8.79;
 
-const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=precipitation&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,cloudcover_mean&timezone=Europe%2FOslo`;
+const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max,cloudcover_mean&timezone=Europe%2FOslo`;
 
 async function init(){
 
-const res = await fetch(url);
-const data = await res.json();
+const [cRes,fRes]=await Promise.all([
+fetch("public/current.json"),
+fetch(url)
+]);
 
-//////////////////////////////////////////////////
-// 🌧️ FORECAST (kort)
-//////////////////////////////////////////////////
+const current=await cRes.json();
+const data=await fRes.json();
 
-const container = document.getElementById("weather");
+// CURRENT
+document.getElementById("current").innerHTML=`
+<div class="current-card">
+<div class="current-grid">
+
+<div class="left">
+<div class="day">I dag</div>
+<div class="icon">${getIcon(data.daily.weathercode[0])}</div>
+
+<div class="temp" style="color:${getTempColor(current.temperature)}">
+${Math.round(current.temperature)}°C
+</div>
+
+<div class="row">💧 ${current.humidity}%</div>
+<div class="row">📊 ${current.pressure} hPa</div>
+</div>
+
+<div class="right">
+<canvas id="chart"></canvas>
+</div>
+
+</div>
+
+<div class="label">
+Oppdatert ${new Date(current.updated).toLocaleTimeString("no-NO")}
+</div>
+</div>
+`;
+
+// CHART
+const now=new Date().getHours();
+const temps=data.hourly.temperature_2m.slice(now,now+12);
+const times=data.hourly.time.slice(now,now+12)
+.map(t=>new Date(t).getHours());
+
+const ctx=document.getElementById("chart").getContext("2d");
+
+new Chart(ctx,{
+type:"line",
+data:{labels:times,datasets:[{
+data:temps,
+borderColor:"#f97316",
+tension:0.4
+}]},
+options:{
+plugins:{legend:{display:false}},
+scales:{y:{ticks:{callback:v=>v+"°"}}}
+}
+});
+
+// FORECAST
+const container=document.getElementById("weather");
 container.innerHTML="";
 
 for(let i=1;i<=3;i++){
@@ -175,8 +251,8 @@ const card=document.createElement("div");
 card.className="card";
 
 card.innerHTML=`
-<div>${new Date(data.daily.time[i]).toLocaleDateString("no-NO",{weekday:"long"})}</div>
-<div>${getIcon(data.daily.weathercode[i])}</div>
+<div class="day">${new Date(data.daily.time[i]).toLocaleDateString("no-NO",{weekday:"long"})}</div>
+<div class="icon">${getIcon(data.daily.weathercode[i])}</div>
 <div class="temp-max" style="color:${getTempColor(max)}">${Math.round(max)}°</div>
 <div class="temp-min">${Math.round(min)}°</div>
 <div class="label">${getSkyText(cloud)}</div>
@@ -185,27 +261,43 @@ card.innerHTML=`
 container.appendChild(card);
 }
 
-//////////////////////////////////////////////////
-// 🌧️ REGEN ALERT (nieuw!)
-//////////////////////////////////////////////////
-
-const rainNext = data.hourly.precipitation.slice(0,6);
-
-const rainComing = rainNext.some(v => v > 0.5);
-
-if(rainComing){
-    document.getElementById("rainAlert").innerHTML = `
-    <div class="alert rain">
-    🌧️ Regn sannsynlig innen 6 timer
-    </div>
-    `;
 }
 
+// HISTORIE
+async function loadHistory(){
+
+try {
+
+const res = await fetch("public/history.json");
+const history = await res.json();
+
+const labels = history.daily.time.map(d =>
+new Date(d).toLocaleDateString("no-NO",{day:"numeric",month:"short"})
+);
+
+new Chart(document.getElementById("historyChart"),{
+type:"line",
+data:{
+labels:labels,
+datasets:[{
+data:history.daily.temperature_2m_mean,
+borderColor:"#ef4444",
+tension:0.4
+}]
+},
+options:{plugins:{legend:{display:false}}}
+});
+
+} catch(e){}
+
 }
 
+// INIT
 init();
+loadHistory();
 
 </script>
 
 </body>
 </html>
+``
