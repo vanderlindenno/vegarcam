@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Værmelding</title>
 
-https://cdn.jsdelivr.net/npm/chart.js>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body {
@@ -18,69 +18,33 @@ body {
 }
 
 header {
+    margin-top: 20px;
     text-align: center;
-    margin-top: 20px;
 }
 
-.version {
-    font-size: 0.75rem;
-    color: #888;
-}
-
-.section-title {
-    color: #666;
-    margin-top: 20px;
-}
-
-/* WRAPPER */
 .wrapper {
-    width: 100%;
     max-width: 900px;
+    width: 100%;
 }
 
 /* CURRENT CARD */
 .current-card {
-    width: 100%;
     background: white;
     border-radius: 20px;
     padding: 20px;
     box-shadow: 0 8px 18px rgba(0,0,0,0.08);
 }
 
-/* GRID */
 .current-grid {
     display: flex;
-    gap: 30px;
+    gap: 25px;
     align-items: center;
 }
 
-/* LEFT SIDE */
 .left {
     flex: 0 0 220px;
 }
 
-.day {
-    color: #f97316;
-    font-weight: bold;
-    font-size: 1.2rem;
-}
-
-.icon {
-    font-size: 2.5rem;
-    margin: 5px 0;
-}
-
-.temp {
-    font-size: 2.8rem;
-    font-weight: bold;
-}
-
-.row {
-    font-size: 0.95rem;
-    margin: 4px 0;
-}
-
-/* RIGHT GRAPH */
 .right {
     flex: 1;
 }
@@ -90,10 +54,24 @@ header {
     height: 180px !important;
 }
 
+.day { color: #f97316; font-weight: bold; }
+.icon { font-size: 2.5rem; }
+.temp { font-size: 2.8rem; font-weight: bold; }
+
+.row {
+    font-size: 0.9rem;
+    margin: 4px 0;
+}
+
+.label {
+    font-size: 0.75rem;
+    color: #666;
+}
+
 /* FORECAST */
 .container {
     display: flex;
-    gap: 16px;
+    gap: 15px;
     margin-top: 20px;
 }
 
@@ -105,11 +83,6 @@ header {
     text-align: center;
     box-shadow: 0 8px 18px rgba(0,0,0,0.08);
 }
-
-.label {
-    font-size: 0.75rem;
-    color: #666;
-}
 </style>
 </head>
 
@@ -117,21 +90,20 @@ header {
 
 <header>
     🇳🇴 Værmelding
-    <div class="version">Versjon 5.0</div>
+    <div class="label">Versjon 6.0</div>
 </header>
 
 <div class="wrapper">
 
-<div class="section-title">Nåværende måling</div>
+<h4>Nåværende måling</h4>
 <div id="current"></div>
 
-<div class="section-title">Værprognose</div>
+<h4>Værprognose</h4>
 <div class="container" id="weather"></div>
 
 </div>
 
 <script>
-
 const lat = 58.79;
 const lon = 8.79;
 
@@ -149,58 +121,54 @@ function formatDay(date){
     return new Date(date).toLocaleDateString("no-NO",{weekday:"long"});
 }
 
-// CURRENT
-fetch("public/current.json")
-.then(r=>r.json())
-.then(data=>{
+async function init(){
 
-    const updated = new Date(data.updated).toLocaleTimeString("no-NO");
+    // 1. LOAD DATA (parallel)
+    const [currentRes, forecastRes] = await Promise.all([
+        fetch("public/current.json"),
+        fetch(url)
+    ]);
 
+    const current = await currentRes.json();
+    const data = await forecastRes.json();
+
+    // 2. BUILD CURRENT CARD
     document.getElementById("current").innerHTML = `
     <div class="current-card">
 
         <div class="current-grid">
-
             <div class="left">
                 <div class="day">I dag</div>
                 <div class="icon">🌤️</div>
-                <div class="temp">${Math.round(data.temperature)}°C</div>
+                <div class="temp">${Math.round(current.temperature)}°C</div>
 
-                <div class="row">🌡️ Føles som ${data.feels_like ?? data.temperature}°C</div>
-                <div class="row">💧 ${data.humidity}%</div>
-                <div class="row">🌫️ Duggpunkt ${data.dew_point ?? "--"}°C</div>
-                <div class="row">📊 ${data.pressure} hPa</div>
+                <div class="row">🌡️ Føles som ${current.feels_like ?? current.temperature}°C</div>
+                <div class="row">💧 ${current.humidity}%</div>
+                <div class="row">🌫️ Duggpunkt ${current.dew_point ?? "-"}°C</div>
+                <div class="row">📊 ${current.pressure} hPa</div>
             </div>
 
             <div class="right">
                 <canvas id="chart"></canvas>
             </div>
-
         </div>
 
-        <div class="label">Oppdatert ${updated}</div>
-
+        <div class="label">Oppdatert ${new Date(current.updated).toLocaleTimeString("no-NO")}</div>
     </div>
     `;
-});
 
-// FORECAST + GRAPH
-fetch(url)
-.then(r=>r.json())
-.then(data=>{
-
+    // 3. GRAFIEK (altijd na render!)
     const now = new Date().getHours();
-
     const temps = data.hourly.temperature_2m.slice(now, now+12);
     const times = data.hourly.time.slice(now, now+12)
-        .map(t=> new Date(t).getHours());
+        .map(t => new Date(t).getHours());
 
     new Chart(document.getElementById("chart"),{
         type:"line",
         data:{
-            labels:times,
+            labels: times,
             datasets:[{
-                data:temps,
+                data: temps,
                 borderColor:"#f97316",
                 backgroundColor:"rgba(249,115,22,0.2)",
                 fill:true,
@@ -214,13 +182,15 @@ fetch(url)
         }
     });
 
+    // 4. FORECAST (ALTijd gevuld)
     const container = document.getElementById("weather");
+    container.innerHTML = "";
 
     for(let i=0;i<3;i++){
-        const card=document.createElement("div");
-        card.className="card";
+        const card = document.createElement("div");
+        card.className = "card";
 
-        card.innerHTML=`
+        card.innerHTML = `
             <div class="day">${formatDay(data.daily.time[i])}</div>
             <div class="icon">${getIcon(data.daily.weathercode[i])}</div>
             <div class="temp">${Math.round(data.daily.temperature_2m_max[i])}°</div>
@@ -229,9 +199,11 @@ fetch(url)
 
         container.appendChild(card);
     }
+}
 
-});
+init();
 </script>
 
 </body>
 </html>
+``
