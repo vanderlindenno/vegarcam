@@ -24,6 +24,7 @@ header {
 
 .wrapper { max-width:900px; width:100%; }
 
+/* current */
 .current-card {
     background:white;
     border-radius:20px;
@@ -50,24 +51,27 @@ header {
     height:220px !important;
 }
 
-.temp {
-    font-size:3rem;
-    font-weight:bold;
+/* historiek centreren */
+.history-card {
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:30px;
 }
 
-.day {
-    color:#f97316;
-    font-weight:bold;
+#historyChart {
+    max-width:800px;
 }
 
-.icon {
-    font-size:2.5rem;
-    margin:5px 0;
-}
+/* tekst */
+.temp { font-size:3rem; font-weight:bold; }
+.day { color:#f97316; font-weight:bold; }
 
+.icon { font-size:2.5rem; margin:5px 0; }
 .row { font-size:0.9rem; margin:4px 0; }
 .label { font-size:0.75rem; color:#666; }
 
+/* forecast */
 .container {
     display:flex;
     gap:16px;
@@ -92,7 +96,7 @@ header {
 
 <header>
     🇳🇴 Værmelding
-    <div class="label">Versjon 12.0</div>
+    <div class="label">Versjon 13.0</div>
 </header>
 
 <div class="wrapper">
@@ -104,7 +108,7 @@ header {
 <div class="container" id="weather"></div>
 
 <h4>Historisk vær</h4>
-<div class="current-card">
+<div class="current-card history-card">
     <canvas id="historyChart"></canvas>
 </div>
 
@@ -112,7 +116,7 @@ header {
 
 <script>
 
-// 🌡️ kleur
+// kleur
 function getTempColor(t){
     if(t<=0) return "#3b82f6";
     if(t<=10) return "#60a5fa";
@@ -120,7 +124,6 @@ function getTempColor(t){
     return "#ef4444";
 }
 
-// 🌤️ tekst
 function getSkyText(c){
     if(c<20) return "Skyfri";
     if(c<50) return "Delvis skyet";
@@ -128,7 +131,6 @@ function getSkyText(c){
     return "Overskyet";
 }
 
-// ☀️ icoon
 function getIcon(code){
     if(code === 0) return "☀️";
     if(code <= 3) return "🌤️";
@@ -183,7 +185,7 @@ Oppdatert ${new Date(current.updated).toLocaleTimeString("no-NO")}
 </div>
 `;
 
-// 📊 chart
+// current grafiek
 const now=new Date().getHours();
 const temps=data.hourly.temperature_2m.slice(now,now+12);
 const times=data.hourly.time.slice(now,now+12)
@@ -229,7 +231,7 @@ scales:{y:{ticks:{callback:v=>v+"°"}}}
 plugins:[nowLine]
 });
 
-// FORECAST
+// forecast
 const container=document.getElementById("weather");
 container.innerHTML="";
 
@@ -266,13 +268,8 @@ container.appendChild(card);
 
 }
 
-//////////////////////////////////////////////////
-// ✅ HISTORIEK (LOS – geen impact op rest)
-//////////////////////////////////////////////////
-
+// HISTORIEK MET DAG MARKERING
 async function loadHistory(){
-
-try {
 
 const res = await fetch("public/history.json");
 const history = await res.json();
@@ -283,6 +280,23 @@ const labels = history.daily.time.map(d =>
 
 const temps = history.daily.temperature_2m_mean;
 const rain = history.daily.precipitation_sum;
+
+// ✅ index van midden = vandaag
+const todayIndex = Math.floor(labels.length / 2);
+
+const highlightPlugin = {
+id:'highlightDay',
+beforeDraw(chart){
+const {ctx,chartArea:{top,bottom},scales:{x}}=chart;
+
+const xPos = x.getPixelForValue(todayIndex);
+
+ctx.save();
+ctx.fillStyle="rgba(239,68,68,0.08)";
+ctx.fillRect(xPos-10, top, 20, bottom-top);
+ctx.restore();
+}
+};
 
 new Chart(document.getElementById("historyChart"),{
 data:{
@@ -304,7 +318,6 @@ yAxisID:"y1"
 ]
 },
 options:{
-responsive:true,
 plugins:{legend:{display:false}},
 scales:{
 y:{
@@ -317,16 +330,13 @@ grid:{drawOnChartArea:false},
 ticks:{callback:v=>v+" mm"}
 }
 }
-}
+},
+plugins:[highlightPlugin]
 });
 
-} catch(e) {
-    console.log("No history data yet");
 }
 
-}
-
-// INIT
+// init
 init();
 loadHistory();
 
