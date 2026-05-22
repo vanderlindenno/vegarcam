@@ -19,11 +19,7 @@ body{
 
 header{text-align:center;margin-top:20px;}
 
-.wrapper{
-    max-width:900px;
-    width:100%;
-    padding:0 12px;
-}
+.wrapper{max-width:900px;width:100%;padding:0 12px;}
 
 .current-card,.card{
     background:white;
@@ -34,12 +30,7 @@ header{text-align:center;margin-top:20px;}
 /* CURRENT */
 .current-card{padding:18px;}
 
-.current-grid{
-    display:flex;
-    gap:20px;
-    align-items:center;
-}
-
+.current-grid{display:flex;gap:20px;align-items:center;}
 .left{flex:0 0 180px;}
 .right{flex:1;}
 
@@ -57,6 +48,7 @@ header{text-align:center;margin-top:20px;}
     display:flex;
     gap:14px;
     overflow-x:auto;
+    padding-bottom:8px;
 }
 
 .card{
@@ -107,7 +99,7 @@ header{text-align:center;margin-top:20px;}
 
 <header>
 🇳🇴 Værmelding
-<div class="label">v19 fixed</div>
+<div class="label">v20 complete</div>
 </header>
 
 <div class="wrapper">
@@ -141,6 +133,13 @@ if(t<=20) return "#f97316";
 return "#ef4444";
 }
 
+function getSkyText(c){
+if(c<20) return "Skyfri";
+if(c<50) return "Delvis skyet";
+if(c<80) return "Skyet";
+return "Overskyet";
+}
+
 function getIcon(code){
 if(code===0) return "☀️";
 if(code<=3) return "🌤️";
@@ -149,7 +148,7 @@ if(code<=67) return "🌧️";
 return "🌥️";
 }
 
-// fetch
+// DATA
 const lat=58.79, lon=8.79;
 const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max,cloudcover_mean&timezone=Europe%2FOslo`;
 
@@ -165,7 +164,7 @@ const data=await fRes.json();
 
 const feels=(current.temperature-(1-current.humidity/100)*2).toFixed(1);
 
-// current UI
+// CURRENT
 document.getElementById("current").innerHTML=`
 <div class="current-card">
 <div class="current-grid">
@@ -180,6 +179,7 @@ ${Math.round(current.temperature)}°C
 
 <div class="row">🌡️ ${feels}°</div>
 <div class="row">💧 ${current.humidity}%</div>
+<div class="row">📊 ${current.pressure || "--"} hPa</div>
 </div>
 
 <div class="right">
@@ -187,10 +187,14 @@ ${Math.round(current.temperature)}°C
 </div>
 
 </div>
+
+<div class="label">
+Oppdatert ${new Date(current.updated).toLocaleTimeString("no-NO")}
+</div>
 </div>
 `;
 
-// graph
+// GRAPH
 const now=new Date().getHours();
 const temps=data.hourly.temperature_2m.slice(now,now+12);
 const times=data.hourly.time.slice(now,now+12).map(t=>new Date(t).getHours());
@@ -203,38 +207,73 @@ gradient.addColorStop(1,"rgba(249,115,22,0)");
 
 new Chart(ctx,{
 type:"line",
-data:{labels:times,datasets:[{
+data:{
+labels:times,
+datasets:[{
 data:temps,
 borderColor:"#f97316",
 backgroundColor:gradient,
 fill:true,
-tension:0.4
-}]},
+tension:0.4,
+pointRadius:3
+}]
+},
 options:{
 plugins:{
 legend:{display:false},
-tooltip:{callbacks:{label:c=>c.raw+"°C"}}
+tooltip:{
+backgroundColor:"#111",
+displayColors:false,
+callbacks:{label:c=>c.raw+"°C"}
+}
 },
 scales:{x:{grid:{display:false}},y:{display:false}}
 }
 });
 
+// ✅ FORECAST terug
+const container=document.getElementById("weather");
+container.innerHTML="";
+
+for(let i=1;i<=3;i++){
+
+const d=data.daily;
+
+container.innerHTML += `
+<div class="card">
+<div class="day">${new Date(d.time[i]).toLocaleDateString("no-NO",{weekday:"long"})}</div>
+
+<div class="icon">${getIcon(d.weathercode[i])}</div>
+
+<div class="temp-max" style="color:${getTempColor(d.temperature_2m_max[i])}">
+${Math.round(d.temperature_2m_max[i])}°
+</div>
+
+<div class="temp-min">${Math.round(d.temperature_2m_min[i])}°</div>
+
+<div class="label">${getSkyText(d.cloudcover_mean[i])}</div>
+
+<div class="label">
+🌧️ ${d.precipitation_sum[i]} mm<br>
+💨 ${d.windspeed_10m_max[i]} m/s<br>
+UV ${d.uv_index_max[i]}
+</div>
+</div>`;
 }
 
-// ✅ HISTORY FIXED
+}
+
+// ✅ HISTORY FIX (dag+maand)
 async function loadHistory(){
 
 const res=await fetch("public/history.json");
 const history=await res.json();
 
-// ✅ match alleen dag + maand (NIET jaar)
 const today=new Date();
-const todayMonth=today.getMonth();
-const todayDay=today.getDate();
-
 const todayIndex = history.daily.time.findIndex(d=>{
-    const dt=new Date(d);
-    return dt.getMonth()===todayMonth && dt.getDate()===todayDay;
+const dt=new Date(d);
+return dt.getDate()===today.getDate() &&
+dt.getMonth()===today.getMonth();
 });
 
 const labels=history.daily.time.map(d=>
