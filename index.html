@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Værmelding</title>
 
+<title>Værmelding</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body {
+body{
     margin:0;
     font-family:-apple-system,BlinkMacSystemFont,sans-serif;
     background:#f2f4f7;
@@ -17,97 +17,156 @@ body {
     align-items:center;
 }
 
-header {
+header{
     text-align:center;
     margin-top:20px;
 }
 
-.wrapper { max-width:900px; width:100%; }
-
-.current-card {
-    background:white;
-    border-radius:20px;
-    padding:20px;
-    box-shadow:0 8px 18px rgba(0,0,0,0.08);
-    margin-top:12px;
+.wrapper{
+    max-width:900px;
+    width:100%;
+    padding:0 12px;
 }
 
-.current-grid {
+/* CARDS */
+.current-card, .card{
+    background:white;
+    border-radius:24px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.08);
+}
+
+/* CURRENT */
+.current-card{
+    padding:18px;
+}
+
+.current-grid{
     display:flex;
-    gap:30px;
+    gap:20px;
     align-items:center;
 }
 
-.left { flex:0 0 220px; }
-.right { flex:1; }
+.left{
+    flex:0 0 180px;
+}
 
-.right canvas {
+.right{
+    flex:1;
+}
+
+.right canvas{
     width:100%;
     height:200px !important;
 }
 
-/* HISTORIE */
-.history-card {
-    display:flex;
-    justify-content:center;
-    padding:30px;
+/* TEXT */
+.temp{
+    font-size:3rem;
+    font-weight:bold;
 }
 
-#historyChart {
+.icon{
+    font-size:2.4rem;
+}
+
+.day{
+    color:#f97316;
+    font-weight:bold;
+}
+
+.label{
+    font-size:0.75rem;
+    color:#777;
+}
+
+.row{
+    margin:5px 0;
+}
+
+/* FORECAST */
+.container{
+    display:flex;
+    gap:14px;
+    overflow-x:auto;
+    padding-bottom:8px;
+}
+
+.card{
+    min-width:140px;
+    padding:14px;
+    text-align:center;
+    flex-shrink:0;
+}
+
+.temp-max{
+    font-size:1.5rem;
+    font-weight:bold;
+}
+
+.temp-min{
+    color:#666;
+}
+
+/* HISTORY */
+.history-card{
+    padding:15px;
+}
+
+#historyChart{
     width:100%;
-    max-width:800px;
-    height:240px !important;
+    height:230px !important;
 }
 
 /* RADAR */
-.radar-card {
-    position:relative;
-    padding:0;
+.radar-card{
     overflow:hidden;
+    position:relative;
 }
 
-.radar-card iframe {
+.radar-card iframe{
     width:100%;
-    height:420px;
-    border:none;
+    height:380px;
 }
 
-.radar-overlay {
+.radar-overlay{
     position:absolute;
     top:12px;
     left:12px;
     background:rgba(0,0,0,0.6);
     color:white;
-    padding:6px 10px;
-    border-radius:10px;
+    padding:6px 12px;
+    border-radius:12px;
     font-size:0.8rem;
 }
 
-/* TEXT */
-.temp { font-size:3rem; font-weight:bold; }
-.day { color:#f97316; font-weight:bold; }
-.icon { font-size:2.5rem; margin:5px 0; }
+/* MOBILE */
+@media(max-width:600px){
 
-.row { font-size:0.9rem; margin:4px 0; }
-.label { font-size:0.75rem; color:#666; }
+    .current-grid{
+        flex-direction:column;
+        align-items:flex-start;
+    }
 
-.container {
-    display:flex;
-    gap:16px;
-    margin-top:20px;
+    .left{
+        width:100%;
+    }
+
+    .right{
+        width:100%;
+    }
+
+    .right canvas{
+        height:170px !important;
+    }
+
+    .temp{
+        font-size:2.3rem;
+    }
+
+    .radar-card iframe{
+        height:300px;
+    }
 }
-
-.card {
-    flex:1;
-    background:white;
-    border-radius:20px;
-    padding:16px;
-    text-align:center;
-    box-shadow:0 8px 18px rgba(0,0,0,0.08);
-}
-
-.temp-max { font-size:1.6rem; font-weight:bold; }
-.temp-min { color:#777; }
 
 </style>
 </head>
@@ -116,7 +175,7 @@ header {
 
 <header>
 🇳🇴 Værmelding
-<div class="label">Versjon 17.0</div>
+<div class="label">Apple style v18</div>
 </header>
 
 <div class="wrapper">
@@ -135,15 +194,14 @@ header {
 <h4>Nedbør radar</h4>
 <div class="current-card radar-card">
 <div class="radar-overlay">🌧️ Live nedbør radar</div>
-
 <iframe src="https://embed.windy.com/embed2.html?lat=58.79&lon=8.79&zoom=12&overlay=satellite&level=surface&menu=&message=true"></iframe>
-
 </div>
 
 </div>
 
 <script>
 
+// HELPERS
 function getTempColor(t){
 if(t<=0) return "#3b82f6";
 if(t<=10) return "#60a5fa";
@@ -166,8 +224,8 @@ if(code <= 67) return "🌧️";
 return "🌥️";
 }
 
+// FETCH
 const lat=58.79, lon=8.79;
-
 const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max,cloudcover_mean&timezone=Europe%2FOslo`;
 
 async function init(){
@@ -180,10 +238,10 @@ fetch(url)
 const current=await cRes.json();
 const data=await fRes.json();
 
-// ✅ feels-like
+// feels-like
 const feels = (current.temperature - (1 - current.humidity/100)*2).toFixed(1);
 
-// CURRENT
+// CURRENT CARD
 document.getElementById("current").innerHTML=`
 <div class="current-card">
 <div class="current-grid">
@@ -196,7 +254,7 @@ document.getElementById("current").innerHTML=`
 ${Math.round(current.temperature)}°C
 </div>
 
-<div class="row">🌡️ Føles som ${feels}°</div>
+<div class="row">🌡️ ${feels}°</div>
 <div class="row">💧 ${current.humidity}%</div>
 <div class="row">📊 ${current.pressure || "--"} hPa</div>
 </div>
@@ -213,7 +271,7 @@ Oppdatert ${new Date(current.updated).toLocaleTimeString("no-NO")}
 </div>
 `;
 
-// GRAFIEK
+// APPLE STYLE GRAPH
 const now=new Date().getHours();
 const temps=data.hourly.temperature_2m.slice(now,now+12);
 const times=data.hourly.time.slice(now,now+12)
@@ -221,7 +279,7 @@ const times=data.hourly.time.slice(now,now+12)
 
 const ctx=document.getElementById("chart").getContext("2d");
 
-const gradient=ctx.createLinearGradient(0,0,0,200);
+const gradient = ctx.createLinearGradient(0,0,0,200);
 gradient.addColorStop(0,"rgba(249,115,22,0.5)");
 gradient.addColorStop(1,"rgba(249,115,22,0)");
 
@@ -234,33 +292,45 @@ data:temps,
 borderColor:"#f97316",
 backgroundColor:gradient,
 fill:true,
-tension:0.4
+tension:0.4,
+pointRadius:4,
+pointHoverRadius:6
 }]
 },
 options:{
-plugins:{legend:{display:false}},
-scales:{y:{ticks:{callback:v=>v+"°"}}}
+plugins:{
+legend:{display:false},
+tooltip:{
+backgroundColor:"#111",
+titleColor:"#fff",
+bodyColor:"#fff",
+padding:10,
+displayColors:false,
+callbacks:{
+label:(c)=> c.raw + "°C"
+}
+}
+},
+scales:{
+x:{grid:{display:false}},
+y:{display:false}
+}
 }
 });
 
 // FORECAST
 const container=document.getElementById("weather");
-container.innerHTML="";
 
 for(let i=1;i<=3;i++){
 
 const max=data.daily.temperature_2m_max[i];
 const min=data.daily.temperature_2m_min[i];
 const cloud=data.daily.cloudcover_mean[i];
-const sun=100-cloud;
-
-const rain=data.daily.precipitation_sum[i];
-const wind=data.daily.windspeed_10m_max[i];
-const uv=data.daily.uv_index_max[i];
 
 container.innerHTML += `
 <div class="card">
 <div class="day">${new Date(data.daily.time[i]).toLocaleDateString("no-NO",{weekday:"long"})}</div>
+
 <div class="icon">${getIcon(data.daily.weathercode[i])}</div>
 
 <div class="temp-max" style="color:${getTempColor(max)}">${Math.round(max)}°</div>
@@ -269,29 +339,25 @@ container.innerHTML += `
 <div class="label">${getSkyText(cloud)}</div>
 
 <div class="label">
-☀️ ${sun}% • ☁️ ${cloud}%<br>
-🌧️ ${rain} mm<br>
-💨 ${wind} m/s<br>
-UV ${uv}
+🌧️ ${data.daily.precipitation_sum[i]} mm<br>
+💨 ${data.daily.windspeed_10m_max[i]} m/s<br>
+UV ${data.daily.uv_index_max[i]}
 </div>
 </div>`;
 }
 
 }
 
-// HISTORIE
+// HISTORY
 async function loadHistory(){
 
 try{
-
-const res = await fetch("public/history.json");
-const history = await res.json();
+const res=await fetch("public/history.json");
+const history=await res.json();
 
 const labels = history.daily.time.map(d =>
 new Date(d).toLocaleDateString("no-NO",{day:"numeric",month:"short"})
 );
-
-const todayIndex = Math.floor(labels.length/2);
 
 new Chart(document.getElementById("historyChart"),{
 
@@ -302,15 +368,13 @@ datasets:[
 type:"line",
 data:history.daily.temperature_2m_mean,
 borderColor:"#ef4444",
-fill:false,
 tension:0.4,
-yAxisID:"y"
+pointRadius:0
 },
 {
 type:"bar",
 data:history.daily.precipitation_sum,
-backgroundColor:"rgba(59,130,246,0.5)",
-yAxisID:"y1"
+backgroundColor:"rgba(59,130,246,0.4)"
 }
 ]
 },
@@ -319,27 +383,9 @@ options:{
 plugins:{legend:{display:false}},
 scales:{
 y:{ticks:{callback:v=>v+"°"}},
-y1:{position:"right",grid:{drawOnChartArea:false},ticks:{callback:v=>v+" mm"}}
+y1:{display:false}
 }
-},
-
-plugins:[{
-id:"todayLine",
-afterDraw(chart){
-const {ctx,chartArea:{top,bottom},scales:{x}}=chart;
-const xPos = x.getPixelForValue(todayIndex);
-
-ctx.fillStyle="rgba(239,68,68,0.1)";
-ctx.fillRect(xPos-10, top, 20, bottom-top);
-
-ctx.beginPath();
-ctx.moveTo(xPos, top);
-ctx.lineTo(xPos, bottom);
-ctx.strokeStyle="red";
-ctx.stroke();
 }
-}]
-
 });
 
 }catch(e){}
