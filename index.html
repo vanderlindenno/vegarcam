@@ -26,7 +26,7 @@ header{
     margin:20px 0;
 }
 
-/* cards */
+/* CARDS */
 .card{
     background:#fff;
     border-radius:20px;
@@ -34,7 +34,7 @@ header{
     box-shadow:0 6px 18px rgba(0,0,0,0.05);
 }
 
-/* current */
+/* CURRENT */
 .current{
     display:flex;
     gap:20px;
@@ -42,43 +42,36 @@ header{
 
 .left{min-width:220px;}
 
-.icon-big{
-    font-size:2.4rem;
-}
+.icon-big{font-size:2.4rem;}
+.temp{font-size:2.6rem;font-weight:bold;}
 
-.temp{
-    font-size:2.6rem;
-    font-weight:bold;
-}
-
-.label{
-    font-size:0.85rem;
-    color:#666;
-}
+.label{font-size:0.85rem;color:#666;}
 
 .right{flex:1;}
 
-/* forecast */
+/* FORECAST (werkt automatisch voor 4 kaarten) */
 .grid{
     display:grid;
     grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
     gap:12px;
 }
 
-/* radar */
+/* RADAR */
+.radar{
+    overflow:hidden;
+    padding:0;
+}
+
 .radar iframe{
     width:100%;
     height:420px;
     border:none;
-    border-radius:14px;
 }
 
-/* mobile */
+/* MOBILE */
 @media(max-width:700px){
 
-.current{
-    flex-direction:column;
-}
+.current{flex-direction:column;}
 
 .left{
     display:grid;
@@ -100,7 +93,7 @@ header{
 
 <header>
 🇳🇴 Værmelding<br>
-<small>v29 FINAL</small>
+<small>v30 – 4 dagers prognose</small>
 </header>
 
 <div class="wrapper">
@@ -118,7 +111,7 @@ header{
 
 <h4>Radar</h4>
 <div class="card radar">
-https://embed.windy.com/embed2.html?lat=58.79&lon=8.79&zoom=12&overlay=radar</iframe>
+<iframe src="https://embed.windy.com/embed2.html?lat=58.79&lon=8.79&zoom=12&overlay=radar"></iframe>
 </div>
 
 </div>
@@ -154,26 +147,26 @@ if(!res.ok) throw new Error();
 const data=await res.json();
 localStorage.setItem("weather",JSON.stringify(data));
 return data;
-}catch{
 
+}catch{
 return{
 hourly:{temperature_2m:Array(24).fill(10),time:Array(24).fill(new Date())},
 daily:{
-weathercode:[1,2,3],
-temperature_2m_max:[15,18,17],
-temperature_2m_min:[8,9,7],
-precipitation_sum:[0,3,5],
-windspeed_10m_max:[3,5,6],
-uv_index_max:[2,3,4],
+weathercode:[1,2,3,2],
+temperature_2m_max:[15,18,17,16],
+temperature_2m_min:[8,9,7,6],
+precipitation_sum:[0,3,5,2],
+windspeed_10m_max:[3,5,6,4],
+uv_index_max:[2,3,4,3],
 time:[
 new Date(),
 new Date(Date.now()+86400000),
-new Date(Date.now()+172800000)
+new Date(Date.now()+172800000),
+new Date(Date.now()+259200000)
 ]
 }
 };
 }
-
 }
 
 async function init(){
@@ -201,7 +194,7 @@ document.getElementById("current").innerHTML=`
 
 </div>`;
 
-/* chart */
+/* CHART */
 new Chart(document.getElementById("chart"),{
 type:"line",
 data:{
@@ -223,24 +216,37 @@ scales:{x:{grid:{display:false}},y:{display:false}}
 }
 });
 
-/* forecast */
+/* ✅ FORECAST 4 DAGEN */
 let html="";
-for(let i=1;i<=3;i++){
+for(let i=1;i<=4;i++){
+
 html+=`
 <div class="card">
-<b>${new Date(data.daily.time[i]).toLocaleDateString("no-NO",{weekday:"long"})}</b><br>
-<div style="font-size:1.5rem;">${getWeatherIcon(data.daily.weathercode[i])}</div>
-${Math.round(data.daily.temperature_2m_max[i])}° / ${Math.round(data.daily.temperature_2m_min[i])}°<br>
-<div class="label">🌧️ ${data.daily.precipitation_sum[i]} mm</div>
-<div class="label">💨 ${data.daily.windspeed_10m_max[i]} m/s</div>
-<div class="label">UV ${data.daily.uv_index_max[i]}</div>
+
+<b>${new Date(data.daily.time[i]).toLocaleDateString("no-NO",{weekday:"long"})}</b>
+
+<div style="font-size:1.5rem;">
+${getWeatherIcon(data.daily.weathercode[i])}
+</div>
+
+<div>
+${Math.round(data.daily.temperature_2m_max[i])}° / ${Math.round(data.daily.temperature_2m_min[i])}°
+</div>
+
+<div class="label">
+🌧️ ${data.daily.precipitation_sum[i]} mm<br>
+💨 ${data.daily.windspeed_10m_max[i]} m/s<br>
+UV ${data.daily.uv_index_max[i]}
+</div>
+
 </div>`;
 }
-document.getElementById("forecast").innerHTML=html;
+
+document.getElementById("forecast").innerHTML = html;
 
 }
 
-/* ✅ HISTORY MET "I DAG" MARKER */
+/* HISTORY MET DAG MARKER */
 async function history(){
 
 try{
@@ -249,7 +255,6 @@ const h=await r.json();
 
 const today=new Date();
 
-/* zoek match */
 const index=h.daily.time.findIndex(d=>{
 const dt=new Date(d);
 return dt.getDate()===today.getDate() &&
@@ -285,7 +290,6 @@ scales:{x:{grid:{display:false}}}
 },
 
 plugins:[{
-id:"todayLine",
 afterDraw(chart){
 
 if(index===-1) return;
@@ -293,26 +297,20 @@ if(index===-1) return;
 const {ctx,chartArea:{top,bottom},scales:{x}}=chart;
 const xPos=x.getPixelForValue(index);
 
-/* highlight */
 ctx.fillStyle="rgba(249,115,22,0.12)";
 ctx.fillRect(xPos-12,top,24,bottom-top);
 
-/* lijn */
 ctx.beginPath();
 ctx.moveTo(xPos,top);
 ctx.lineTo(xPos,bottom);
 ctx.strokeStyle="#f97316";
-ctx.lineWidth=2;
 ctx.stroke();
 
-/* label */
 ctx.fillStyle="#f97316";
 ctx.textAlign="center";
-ctx.font="12px sans-serif";
 ctx.fillText("i dag",xPos,top-5);
 }
 }]
-
 });
 
 }catch{
