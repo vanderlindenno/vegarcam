@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Værmelding</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -18,81 +19,82 @@ body{
 /* LAYOUT */
 .wrapper{
     max-width:1200px;
-    margin:0 auto;
+    margin:auto;
     padding:14px;
 }
 
+/* HEADER */
 header{
     text-align:center;
     margin:20px 0;
     font-weight:600;
 }
 
-h4{
-    margin:20px 6px 10px;
-}
-
 /* CARDS */
-.current-card,.card,.history-card,.radar-card{
-    background:#fff;
+.cardbox{
+    background:white;
     border-radius:20px;
     box-shadow:0 6px 18px rgba(0,0,0,0.06);
+    padding:18px;
 }
 
 /* CURRENT */
-.current-card{padding:18px;}
-
 .current-grid{
     display:flex;
     gap:20px;
+    align-items:flex-start;
 }
 
-.left{flex:0 0 220px;}
-.right{flex:1;max-width:600px;}
-
-.right canvas{
-    height:220px!important;
+.left{
+    min-width:200px;
 }
 
-/* TEXT */
+.right{
+    flex:1;
+    max-width:600px;
+}
+
 .temp{font-size:2.6rem;font-weight:bold;}
-.label{font-size:0.75rem;color:#777;}
+.label{font-size:.8rem;color:#666;margin-top:6px;}
 .day{color:#f97316;font-weight:bold;}
 .icon{font-size:2rem;}
 
 /* FORECAST */
 .container{
     display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
     gap:14px;
 }
 
-.card{
-    padding:18px;
+.forecast{
     text-align:center;
-    transition:.2s;
-}
-
-.card:hover{
-    transform:translateY(-4px);
 }
 
 /* HISTORY */
-.history-card{padding:12px;}
-#historyChart{height:260px!important;}
+#historyChart{height:260px!important}
 
-/* RADAR */
-.radar-card iframe{
-    width:100%;
-    height:420px;
-    border:none;
+/* MOBILE FIX ✅ */
+@media(max-width:700px){
+
+.current-grid{
+    flex-direction:column;
 }
 
-/* MOBILE */
-@media(max-width:700px){
-    .current-grid{flex-direction:column;}
-    .right{max-width:100%;}
-    .container{grid-template-columns:1fr;}
+.left,.right{
+    width:100%;
+    max-width:100%;
+}
+
+.left{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+}
+
+.left .temp{
+    grid-column:span 2;
+}
+
 }
 
 </style>
@@ -102,7 +104,7 @@ h4{
 
 <header>
 🇳🇴 Værmelding
-<div class="label">v24 ultra clean</div>
+<div class="label">v25 final</div>
 </header>
 
 <div class="wrapper">
@@ -113,32 +115,18 @@ h4{
 <h4>Værprognose</h4>
 <div id="weather" class="container"></div>
 
-<h4>Historisk vær fra i fjor</h4>
-<div class="history-card">
+<h4>Historisk vær</h4>
+<div class="cardbox">
 <canvas id="historyChart"></canvas>
-</div>
-
-<h4>Radar</h4>
-<div class="radar-card">
-<iframe src="https://embed.windy.com/embed2.html?lat=58.79&lon=8.79&zoom=12&overlay=radar"></iframe>
 </div>
 
 </div>
 
 <script>
 
-/* ✅ GLOBAL SHARP FIX */
 Chart.defaults.devicePixelRatio = 2;
 
-/* HELPERS */
-function getTempColor(t){
-if(t<=0) return "#3b82f6";
-if(t<=10) return "#60a5fa";
-if(t<=20) return "#f97316";
-return "#ef4444";
-}
-
-function getIcon(c){
+function icon(c){
 if(c===0)return"☀️";
 if(c<=3)return"🌤️";
 if(c<=48)return"☁️";
@@ -148,7 +136,7 @@ return"🌥️";
 
 const lat=58.79,lon=8.79;
 
-const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max&timezone=Europe%2FOslo`;
+const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max&timezone=Europe%2FOslo`;
 
 async function init(){
 
@@ -157,23 +145,33 @@ fetch("public/current.json"),
 fetch(url)
 ]);
 
-const current=await cRes.json();
-const data=await fRes.json();
+const c=await cRes.json();
+const d=await fRes.json();
+
+/* FEELS LIKE */
+const feels=(c.temperature-(1-c.humidity/100)*2).toFixed(1);
 
 /* CURRENT */
 document.getElementById("current").innerHTML=`
-<div class="current-card">
+<div class="cardbox">
 <div class="current-grid">
 
 <div class="left">
-<div class="day">Nåværende måling</div>
-<div class="icon">${getIcon(data.daily.weathercode[0])}</div>
 
-<div class="temp" style="color:${getTempColor(current.temperature)}">
-${Math.round(current.temperature)}°C
+<div class="day">Nåværende måling</div>
+<div class="icon">${icon(d.daily.weathercode[0])}</div>
+
+<div class="temp">${Math.round(c.temperature)}°C</div>
+
+<div class="label">🌡️ Føles som ${feels}°</div>
+<div class="label">💧 ${c.humidity}%</div>
+<div class="label">📊 ${c.pressure||"--"} hPa</div>
+<div class="label">💨 ${c.wind||"--"} m/s</div>
+
+<div class="label">
+Oppdatert ${new Date(c.updated).toLocaleTimeString("no-NO")}
 </div>
 
-<div class="label">💧 ${current.humidity}%</div>
 </div>
 
 <div class="right">
@@ -183,80 +181,63 @@ ${Math.round(current.temperature)}°C
 </div>
 </div>`;
 
-/* ===== SHARP GRAPH ===== */
-
+/* CHART */
 const now=new Date().getHours();
-const temps=data.hourly.temperature_2m.slice(now,now+12);
-const times=data.hourly.time.slice(now,now+12).map(t=>new Date(t).getHours());
 
-const ctx=document.getElementById("chart").getContext("2d");
-
-const grad=ctx.createLinearGradient(0,0,0,220);
-grad.addColorStop(0,"rgba(249,115,22,0.4)");
-grad.addColorStop(1,"rgba(249,115,22,0)");
-
-new Chart(ctx,{
+new Chart(document.getElementById("chart"),{
 type:"line",
 data:{
-labels:times,
+labels:d.hourly.time.slice(now,now+12).map(t=>new Date(t).getHours()),
 datasets:[{
-data:temps,
+data:d.hourly.temperature_2m.slice(now,now+12),
 borderColor:"#f97316",
 borderWidth:3,
 pointRadius:4,
-pointHoverRadius:6,
-backgroundColor:grad,
-fill:true,
-tension:0.4
+tension:0.4,
+fill:true
 }]
 },
 options:{
 responsive:true,
 maintainAspectRatio:false,
 plugins:{legend:{display:false}},
-scales:{
-x:{
-grid:{display:false},
-title:{display:true,text:"Timer (i dag)"}
-},
-y:{display:false}
-}
+scales:{x:{grid:{display:false}},y:{display:false}}
 }
 });
 
 /* FORECAST */
-
-const c=document.getElementById("weather");
-
 for(let i=1;i<=3;i++){
-const d=data.daily;
 
-c.innerHTML+=`
-<div class="card">
-<div class="day">${new Date(d.time[i]).toLocaleDateString("no-NO",{weekday:"long"})}</div>
-<div class="icon">${getIcon(d.weathercode[i])}</div>
-<div style="color:${getTempColor(d.temperature_2m_max[i])}">
-${Math.round(d.temperature_2m_max[i])}°
+document.getElementById("weather").innerHTML+=`
+<div class="cardbox forecast">
+<div class="day">${new Date(d.daily.time[i]).toLocaleDateString("no-NO",{weekday:"long"})}</div>
+<div class="icon">${icon(d.daily.weathercode[i])}</div>
+
+<div><b>${Math.round(d.daily.temperature_2m_max[i])}°</b></div>
+<div>${Math.round(d.daily.temperature_2m_min[i])}°</div>
+
+<div class="label">
+🌧️ ${d.daily.precipitation_sum[i]} mm<br>
+💨 ${d.daily.windspeed_10m_max[i]} m/s<br>
+UV ${d.daily.uv_index_max[i]}
 </div>
-<div>${Math.round(d.temperature_2m_min[i])}°</div>
 </div>`;
 }
 
 }
 
-/* ===== HISTORY WITH TODAY LINE ===== */
+/* HISTORY */
+async function history(){
 
-async function loadHistory(){
-
-const res=await fetch("public/history.json");
-const h=await res.json();
+const r=await fetch("public/history.json");
+const h=await r.json();
 
 const today=new Date();
 
-const index=h.daily.time.findIndex(d=>{
-const dt=new Date(d);
-return dt.getDate()===today.getDate() &&
-       dt.getMonth()===today.getMonth();
+const idx=h.daily.time.findIndex(t=>{
+const d=new Date(t);
+return d.getDate()==today.getDate() &&
+d.getMonth()==today.getMonth();
 });
 
 new Chart(document.getElementById("historyChart"),{
@@ -268,7 +249,7 @@ datasets:[
 type:"line",
 data:h.daily.temperature_2m_mean,
 borderColor:"#ef4444",
-borderWidth:2.5,
+borderWidth:2,
 tension:0.4,
 pointRadius:0
 },
@@ -281,23 +262,17 @@ backgroundColor:"rgba(59,130,246,0.2)"
 },
 
 options:{
-responsive:true,
-maintainAspectRatio:false,
 plugins:{legend:{display:false}},
-scales:{
-x:{grid:{display:false}},
-y:{ticks:{callback:v=>v+"°"}}
-}
+scales:{x:{grid:{display:false}}}
 },
 
 plugins:[{
-id:"todayLine",
-afterDraw(chart){
+afterDraw(c){
 
-if(index===-1)return;
+if(idx==-1)return;
 
-const {ctx,chartArea:{top,bottom},scales:{x}}=chart;
-const xPos=x.getPixelForValue(index);
+const {ctx,chartArea:{top,bottom},scales:{x}}=c;
+const xPos=x.getPixelForValue(idx);
 
 ctx.fillStyle="rgba(249,115,22,0.1)";
 ctx.fillRect(xPos-10,top,20,bottom-top);
@@ -306,21 +281,15 @@ ctx.beginPath();
 ctx.moveTo(xPos,top);
 ctx.lineTo(xPos,bottom);
 ctx.strokeStyle="#f97316";
-ctx.lineWidth=2;
 ctx.stroke();
-
-ctx.fillStyle="#f97316";
-ctx.textAlign="center";
-ctx.fillText("i dag",xPos,top-5);
 }
 }]
-
 });
 
 }
 
 init();
-loadHistory();
+history();
 
 </script>
 
