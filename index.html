@@ -24,31 +24,26 @@ body{
 header{
     text-align:center;
     margin:20px 0;
-    font-weight:600;
 }
 
+/* cards */
 .card{
     background:#fff;
     border-radius:20px;
     padding:16px;
     box-shadow:0 6px 18px rgba(0,0,0,0.05);
-    transition:0.2s;
 }
-.card:hover{transform:translateY(-3px);}
 
-/* CURRENT */
+/* current */
 .current{
     display:flex;
     gap:20px;
 }
 
-.left{
-    min-width:220px;
-}
+.left{min-width:220px;}
 
 .icon-big{
-    font-size:2.5rem;
-    margin:6px 0;
+    font-size:2.4rem;
 }
 
 .temp{
@@ -61,26 +56,24 @@ header{
     color:#666;
 }
 
-.right{
-    flex:1;
-}
+.right{flex:1;}
 
-/* FORECAST */
+/* forecast */
 .grid{
     display:grid;
     grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
     gap:12px;
 }
 
-/* RADAR */
+/* radar */
 .radar iframe{
     width:100%;
-    height:400px;
+    height:420px;
     border:none;
     border-radius:14px;
 }
 
-/* MOBILE */
+/* mobile */
 @media(max-width:700px){
 
 .current{
@@ -106,8 +99,8 @@ header{
 <body>
 
 <header>
-🇳🇴 Værmelding
-<div style="color:#777;font-size:12px;">v28 met icon</div>
+🇳🇴 Værmelding<br>
+<small>v29 FINAL</small>
 </header>
 
 <div class="wrapper">
@@ -125,7 +118,7 @@ header{
 
 <h4>Radar</h4>
 <div class="card radar">
-<iframe src="https://embed.windy.com/embed2.html?lat=58.79&lon=8.79&zoom=12&overlay=radar"></iframe>
+https://embed.windy.com/embed2.html?lat=58.79&lon=8.79&zoom=12&overlay=radar</iframe>
 </div>
 
 </div>
@@ -134,98 +127,81 @@ header{
 
 Chart.defaults.devicePixelRatio = 2;
 
-/* ✅ BETERE ICON MAPPING */
+/* ICONS */
 function getWeatherIcon(code){
-
-if(code === 0) return "☀️";
-if(code === 1 || code === 2) return "🌤️";
-if(code === 3) return "☁️";
-if(code >= 45 && code <= 48) return "🌫️";
-if(code >= 51 && code <= 57) return "🌦️";
-if(code >= 61 && code <= 67) return "🌧️";
-if(code >= 71 && code <= 77) return "❄️";
-if(code >= 80 && code <= 82) return "🌦️";
-if(code >= 95) return "⛈️";
-
-return "🌥️";
+if(code===0)return"☀️";
+if(code<=2)return"🌤️";
+if(code===3)return"☁️";
+if(code>=45&&code<=48)return"🌫️";
+if(code>=51&&code<=57)return"🌦️";
+if(code>=61&&code<=67)return"🌧️";
+if(code>=71&&code<=77)return"❄️";
+if(code>=80&&code<=82)return"🌦️";
+if(code>=95)return"⛈️";
+return"🌥️";
 }
 
 const url=`https://api.open-meteo.com/v1/forecast?latitude=58.79&longitude=8.79&hourly=temperature_2m&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max&timezone=Europe%2FOslo`;
 
 async function loadWeather(){
 
-const cache = localStorage.getItem("weather");
-
-if(cache){
-    return JSON.parse(cache);
-}
+const cache=localStorage.getItem("weather");
+if(cache) return JSON.parse(cache);
 
 try{
-    const res = await fetch(url);
-    if(!res.ok) throw new Error();
-
-    const data = await res.json();
-    localStorage.setItem("weather", JSON.stringify(data));
-    return data;
-
+const res=await fetch(url);
+if(!res.ok) throw new Error();
+const data=await res.json();
+localStorage.setItem("weather",JSON.stringify(data));
+return data;
 }catch{
 
-    return {
-        hourly:{
-            temperature_2m:Array(24).fill(10),
-            time:Array(24).fill(new Date())
-        },
-        daily:{
-            weathercode:[1,2,3],
-            temperature_2m_max:[15,18,17],
-            temperature_2m_min:[8,9,7],
-            precipitation_sum:[0,3,5],
-            windspeed_10m_max:[3,5,6],
-            uv_index_max:[2,3,4],
-            time:[
-                new Date(),
-                new Date(Date.now()+86400000),
-                new Date(Date.now()+172800000)
-            ]
-        }
-    };
+return{
+hourly:{temperature_2m:Array(24).fill(10),time:Array(24).fill(new Date())},
+daily:{
+weathercode:[1,2,3],
+temperature_2m_max:[15,18,17],
+temperature_2m_min:[8,9,7],
+precipitation_sum:[0,3,5],
+windspeed_10m_max:[3,5,6],
+uv_index_max:[2,3,4],
+time:[
+new Date(),
+new Date(Date.now()+86400000),
+new Date(Date.now()+172800000)
+]
 }
+};
+}
+
 }
 
 async function init(){
 
-const data = await loadWeather();
-const now = new Date().getHours();
-const temp = data.hourly.temperature_2m[now];
+const data=await loadWeather();
+const now=new Date().getHours();
+const temp=data.hourly.temperature_2m[now];
 
-/* ✅ CURRENT MET ICOON */
 document.getElementById("current").innerHTML=`
 <div class="card current">
 
 <div class="left">
-
-<div><b>Nu</b></div>
-
-<div class="icon-big">
-${getWeatherIcon(data.daily.weathercode[0])}
-</div>
-
+<div>Nu</div>
+<div class="icon-big">${getWeatherIcon(data.daily.weathercode[0])}</div>
 <div class="temp">${Math.round(temp)}°C</div>
 
 <div class="label">💧 ~60%</div>
 <div class="label">💨 3 m/s</div>
 <div class="label">📊 1012 hPa</div>
-
 </div>
 
 <div class="right">
 <canvas id="chart"></canvas>
 </div>
 
-</div>
-`;
+</div>`;
 
-/* CHART */
+/* chart */
 new Chart(document.getElementById("chart"),{
 type:"line",
 data:{
@@ -243,47 +219,49 @@ options:{
 responsive:true,
 maintainAspectRatio:false,
 plugins:{legend:{display:false}},
-scales:{
-x:{grid:{display:false}},
-y:{display:false}
-}
+scales:{x:{grid:{display:false}},y:{display:false}}
 }
 });
 
-/* FORECAST */
+/* forecast */
 let html="";
 for(let i=1;i<=3;i++){
 html+=`
 <div class="card">
-<div><b>${new Date(data.daily.time[i]).toLocaleDateString("no-NO",{weekday:"long"})}</b></div>
-<div style="font-size:1.6rem;">${getWeatherIcon(data.daily.weathercode[i])}</div>
-
-<div>
-${Math.round(data.daily.temperature_2m_max[i])}° / ${Math.round(data.daily.temperature_2m_min[i])}°
-</div>
-
-<div class="label">
-🌧️ ${data.daily.precipitation_sum[i]} mm<br>
-💨 ${data.daily.windspeed_10m_max[i]} m/s<br>
-UV ${data.daily.uv_index_max[i]}
-</div>
+<b>${new Date(data.daily.time[i]).toLocaleDateString("no-NO",{weekday:"long"})}</b><br>
+<div style="font-size:1.5rem;">${getWeatherIcon(data.daily.weathercode[i])}</div>
+${Math.round(data.daily.temperature_2m_max[i])}° / ${Math.round(data.daily.temperature_2m_min[i])}°<br>
+<div class="label">🌧️ ${data.daily.precipitation_sum[i]} mm</div>
+<div class="label">💨 ${data.daily.windspeed_10m_max[i]} m/s</div>
+<div class="label">UV ${data.daily.uv_index_max[i]}</div>
 </div>`;
 }
-
 document.getElementById("forecast").innerHTML=html;
 
 }
 
-/* HISTORY */
+/* ✅ HISTORY MET "I DAG" MARKER */
 async function history(){
 
 try{
 const r=await fetch("public/history.json");
 const h=await r.json();
 
+const today=new Date();
+
+/* zoek match */
+const index=h.daily.time.findIndex(d=>{
+const dt=new Date(d);
+return dt.getDate()===today.getDate() &&
+       dt.getMonth()===today.getMonth();
+});
+
 new Chart(document.getElementById("historyChart"),{
+
 data:{
-labels:h.daily.time.map(d=>new Date(d).toLocaleDateString()),
+labels:h.daily.time.map(d=>
+new Date(d).toLocaleDateString("no-NO",{day:"numeric",month:"short"})
+),
 datasets:[
 {
 type:"line",
@@ -300,10 +278,41 @@ backgroundColor:"rgba(59,130,246,0.25)"
 }
 ]
 },
+
 options:{
 plugins:{legend:{display:false}},
 scales:{x:{grid:{display:false}}}
+},
+
+plugins:[{
+id:"todayLine",
+afterDraw(chart){
+
+if(index===-1) return;
+
+const {ctx,chartArea:{top,bottom},scales:{x}}=chart;
+const xPos=x.getPixelForValue(index);
+
+/* highlight */
+ctx.fillStyle="rgba(249,115,22,0.12)";
+ctx.fillRect(xPos-12,top,24,bottom-top);
+
+/* lijn */
+ctx.beginPath();
+ctx.moveTo(xPos,top);
+ctx.lineTo(xPos,bottom);
+ctx.strokeStyle="#f97316";
+ctx.lineWidth=2;
+ctx.stroke();
+
+/* label */
+ctx.fillStyle="#f97316";
+ctx.textAlign="center";
+ctx.font="12px sans-serif";
+ctx.fillText("i dag",xPos,top-5);
 }
+}]
+
 });
 
 }catch{
