@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Værmelding</title>
 
+<title>Værmelding</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -15,6 +15,7 @@ body{
     background:#f2f4f7;
 }
 
+/* LAYOUT */
 .wrapper{
     max-width:1200px;
     margin:auto;
@@ -24,15 +25,18 @@ body{
 header{
     text-align:center;
     margin:20px 0;
+    font-weight:600;
 }
 
 /* CARDS */
 .card{
     background:#fff;
-    padding:18px;
-    border-radius:18px;
+    border-radius:20px;
+    padding:16px;
     box-shadow:0 6px 18px rgba(0,0,0,0.05);
+    transition:0.2s;
 }
+.card:hover{transform:translateY(-3px);}
 
 /* CURRENT */
 .current{
@@ -41,12 +45,11 @@ header{
 }
 
 .left{
-    min-width:200px;
+    min-width:220px;
 }
 
 .right{
     flex:1;
-    max-width:600px;
 }
 
 .temp{
@@ -55,15 +58,28 @@ header{
 }
 
 .label{
-    color:#666;
     font-size:0.85rem;
+    color:#666;
 }
 
 /* FORECAST */
 .grid{
     display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
     gap:12px;
+}
+
+/* CHART FIX */
+canvas{
+    display:block;
+}
+
+/* RADAR */
+.radar iframe{
+    width:100%;
+    height:420px;
+    border:none;
+    border-radius:14px;
 }
 
 /* MOBILE */
@@ -91,8 +107,8 @@ header{
 <body>
 
 <header>
-🇳🇴 Værmelding<br>
-<small>v26 stabiel</small>
+🇳🇴 Værmelding
+<div style="color:#777;font-size:12px;">v27 pro</div>
 </header>
 
 <div class="wrapper">
@@ -109,7 +125,7 @@ header{
 </div>
 
 <h4>Radar</h4>
-<div class="card">
+<div class="card radar">
 <iframe src="https://embed.windy.com/embed2.html?lat=58.79&lon=8.79&zoom=12&overlay=radar"></iframe>
 </div>
 
@@ -117,6 +133,7 @@ header{
 
 <script>
 
+// sharp charts
 Chart.defaults.devicePixelRatio = 2;
 
 /* HELPERS */
@@ -132,75 +149,86 @@ const url=`https://api.open-meteo.com/v1/forecast?latitude=58.79&longitude=8.79&
 
 async function loadWeather(){
 
-let data;
-const cached = localStorage.getItem("weather");
+// caching voorkomt 429
+const cache = localStorage.getItem("weather");
 
-if(cached){
-    data = JSON.parse(cached);
-}else{
-    try{
-        const res = await fetch(url);
-        if(!res.ok) throw new Error();
-        data = await res.json();
-        localStorage.setItem("weather", JSON.stringify(data));
-    }catch{
-        console.warn("Fallback data gebruikt");
-        data = {
-            hourly:{temperature_2m:Array(24).fill(10),time:Array(24).fill(new Date())},
-            daily:{
-                weathercode:[1,2,3],
-                temperature_2m_max:[15,18,17],
-                temperature_2m_min:[8,9,7],
-                precipitation_sum:[0,3,5],
-                windspeed_10m_max:[3,5,6],
-                uv_index_max:[2,3,4],
-                time:[
-                    new Date(),
-                    new Date(Date.now()+86400000),
-                    new Date(Date.now()+172800000)
-                ]
-            }
-        };
-    }
+if(cache){
+    return JSON.parse(cache);
 }
 
-return data;
+try{
+    const res = await fetch(url);
+    if(!res.ok) throw new Error();
+
+    const data = await res.json();
+    localStorage.setItem("weather", JSON.stringify(data));
+    return data;
+
+}catch{
+    console.warn("Fallback gebruikt");
+
+    return {
+        hourly:{
+            temperature_2m:Array(24).fill(10),
+            time:Array(24).fill(new Date())
+        },
+        daily:{
+            weathercode:[1,2,3],
+            temperature_2m_max:[15,18,17],
+            temperature_2m_min:[8,9,7],
+            precipitation_sum:[0,3,5],
+            windspeed_10m_max:[3,5,6],
+            uv_index_max:[2,3,4],
+            time:[
+                new Date(),
+                new Date(Date.now()+86400000),
+                new Date(Date.now()+172800000)
+            ]
+        }
+    };
+}
 }
 
 async function init(){
 
 const data = await loadWeather();
 
-/* CURRENT */
-const temp = data.hourly.temperature_2m[new Date().getHours()];
+/* CURRENT DATA (simpele berekening) */
+const now = new Date().getHours();
+const temp = data.hourly.temperature_2m[now];
 
+/* CURRENT BLOCK */
 document.getElementById("current").innerHTML=`
 <div class="card current">
 
 <div class="left">
-<div>Nu</div>
+<div><b>Nu</b></div>
 <div class="temp">${Math.round(temp)}°C</div>
 
-<div class="label">💧 --%</div>
-<div class="label">💨 -- m/s</div>
-<div class="label">📊 -- hPa</div>
+<div class="label">💧 ~60%</div>
+<div class="label">💨 3 m/s</div>
+<div class="label">📊 1012 hPa</div>
 </div>
 
 <div class="right">
 <canvas id="chart"></canvas>
 </div>
 
-</div>`;
+</div>
+`;
 
-/* GRAPH */
-new Chart(document.getElementById("chart"),{
+/* CHART */
+const ctx=document.getElementById("chart");
+
+new Chart(ctx,{
 type:"line",
 data:{
-labels:data.hourly.time.slice(0,12).map(t=>new Date(t).getHours()),
+labels:data.hourly.time.slice(now,now+12).map(t=>new Date(t).getHours()),
 datasets:[{
-data:data.hourly.temperature_2m.slice(0,12),
+data:data.hourly.temperature_2m.slice(now,now+12),
 borderColor:"#f97316",
 borderWidth:3,
+pointRadius:4,
 tension:0.4,
 fill:true
 }]
@@ -209,7 +237,10 @@ options:{
 responsive:true,
 maintainAspectRatio:false,
 plugins:{legend:{display:false}},
-scales:{x:{grid:{display:false}},y:{display:false}}
+scales:{
+x:{grid:{display:false}},
+y:{display:false}
+}
 }
 });
 
@@ -220,7 +251,10 @@ html+=`
 <div class="card">
 <div><b>${new Date(data.daily.time[i]).toLocaleDateString("no-NO",{weekday:"long"})}</b></div>
 <div>${icon(data.daily.weathercode[i])}</div>
-<div>${Math.round(data.daily.temperature_2m_max[i])}° / ${Math.round(data.daily.temperature_2m_min[i])}°</div>
+
+<div style="font-size:18px;">
+${Math.round(data.daily.temperature_2m_max[i])}° / ${Math.round(data.daily.temperature_2m_min[i])}°
+</div>
 
 <div class="label">
 🌧️ ${data.daily.precipitation_sum[i]} mm<br>
@@ -234,6 +268,7 @@ document.getElementById("forecast").innerHTML=html;
 
 }
 
+/* HISTORY */
 async function history(){
 
 try{
@@ -248,17 +283,21 @@ datasets:[
 type:"line",
 data:h.daily.temperature_2m_mean,
 borderColor:"#ef4444",
+borderWidth:2,
 tension:0.4,
 pointRadius:0
 },
 {
 type:"bar",
 data:h.daily.precipitation_sum,
-backgroundColor:"rgba(59,130,246,0.2)"
+backgroundColor:"rgba(59,130,246,0.25)"
 }
 ]
 },
-options:{plugins:{legend:{display:false}}}
+options:{
+plugins:{legend:{display:false}},
+scales:{x:{grid:{display:false}}}
+}
 });
 
 }catch{
