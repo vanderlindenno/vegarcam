@@ -38,10 +38,16 @@ header{
 }
 
 .left{min-width:220px;}
+
 .icon-big{font-size:2.4rem;}
 .temp{font-size:2.6rem;font-weight:bold;}
 .label{font-size:0.85rem;color:#666;}
-.right{flex:1;}
+
+.right{
+    flex:1;
+    position:relative;
+    height:200px;
+}
 
 .grid{
     display:grid;
@@ -49,7 +55,7 @@ header{
     gap:12px;
 }
 
-/* LIVE DOT */
+/* LIVE indicator */
 .live-dot{
   width:8px;
   height:8px;
@@ -64,6 +70,12 @@ header{
   0%{opacity:1;}
   50%{opacity:0.3;}
   100%{opacity:1;}
+}
+
+.radar iframe{
+    width:100%;
+    height:420px;
+    border:none;
 }
 
 @media(max-width:700px){
@@ -87,6 +99,16 @@ header{
 <h4>Værprognose</h4>
 <div id="forecast" class="grid"></div>
 
+<h4>Historisk vær</h4>
+<div class="card">
+<canvas id="historyChart"></canvas>
+</div>
+
+<h4>Radar</h4>
+<div class="card radar">
+<iframe src="https://embed.windy.com/embed2.html?lat=58.79&lon=8.79&zoom=8&overlay=radar"></iframe>
+</div>
+
 </div>
 
 <script>
@@ -104,7 +126,7 @@ if(code>=95)return"⛈️";
 return"🌥️";
 }
 
-const url = `https://api.open-meteo.com/v1/forecast?latitude=58.79&longitude=8.79&hourly=temperature_2m,relative_humidity_2m,windspeed_10m,surface_pressure&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Europe%2FOslo`;
+const url = `https://api.open-meteo.com/v1/forecast?latitude=58.79&longitude=8.79&hourly=temperature_2m,relative_humidity_2m,windspeed_10m,surface_pressure&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max&timezone=Europe%2FOslo`;
 
 async function loadWeather(){
 const res = await fetch(url);
@@ -115,23 +137,19 @@ async function init(){
 
 const data = await loadWeather();
 const now = new Date().getHours();
+const updated = new Date().toLocaleTimeString("no-NO");
 
 const temp = data.hourly.temperature_2m[now];
 const humidity = data.hourly.relative_humidity_2m[now];
 const wind = data.hourly.windspeed_10m[now];
 const pressure = data.hourly.surface_pressure[now];
 
-const updated = new Date().toLocaleTimeString("no-NO");
-
 /* CURRENT */
 document.getElementById("current").innerHTML=`
 <div class="card current">
 
 <div class="left">
-<div>
-Nu <span class="live-dot"></span>
-</div>
-
+<div>Nu <span class="live-dot"></span></div>
 <div class="label">Oppdatert: ${updated}</div>
 
 <div class="icon-big">${getWeatherIcon(data.daily.weathercode[0])}</div>
@@ -162,6 +180,8 @@ fill:true
 }]
 },
 options:{
+responsive:true,
+maintainAspectRatio:false,
 plugins:{legend:{display:false}},
 scales:{x:{grid:{display:false}},y:{display:false}}
 }
@@ -173,22 +193,66 @@ for(let i=1;i<=4;i++){
 html+=`
 <div class="card">
 <b>${new Date(data.daily.time[i]).toLocaleDateString("no-NO",{weekday:"long"})}</b>
+
 <div style="font-size:1.5rem;">
 ${getWeatherIcon(data.daily.weathercode[i])}
 </div>
+
 <div>
 ${Math.round(data.daily.temperature_2m_max[i])}° / ${Math.round(data.daily.temperature_2m_min[i])}°
 </div>
+
+<div class="label">
+🌧️ ${data.daily.precipitation_sum[i]} mm<br>
+💨 ${data.daily.windspeed_10m_max[i]} m/s<br>
+UV ${data.daily.uv_index_max[i]}
+</div>
+
 </div>`;
 }
 document.getElementById("forecast").innerHTML = html;
 
 }
 
-/* AUTO REFRESH elke 10 min */
+/* HISTORY */
+async function history(){
+try{
+const r = await fetch("public/history.json");
+const h = await r.json();
+
+new Chart(document.getElementById("historyChart"),{
+data:{
+labels:h.daily.time.map(d=>new Date(d).toLocaleDateString("no-NO",{day:"numeric",month:"short"})),
+datasets:[
+{
+type:"line",
+data:h.daily.temperature_2m_mean,
+borderColor:"#ef4444",
+tension:0.4
+},
+{
+type:"bar",
+data:h.daily.precipitation_sum,
+backgroundColor:"rgba(59,130,246,0.3)"
+}
+]
+},
+options:{
+plugins:{legend:{display:false}}
+}
+});
+
+}catch{
+console.warn("history nicht geladen");
+}
+}
+
+/* refresh */
 setInterval(init, 10 * 60 * 1000);
 
 init();
+history();
+
 </script>
 
 </body>
