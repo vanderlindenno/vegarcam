@@ -8,7 +8,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-
 body{
     margin:0;
     font-family:-apple-system,BlinkMacSystemFont,sans-serif;
@@ -26,7 +25,6 @@ header{
     margin:20px 0;
 }
 
-/* CARDS */
 .card{
     background:#fff;
     border-radius:20px;
@@ -34,58 +32,43 @@ header{
     box-shadow:0 6px 18px rgba(0,0,0,0.05);
 }
 
-/* CURRENT */
 .current{
     display:flex;
     gap:20px;
 }
 
 .left{min-width:220px;}
-
 .icon-big{font-size:2.4rem;}
 .temp{font-size:2.6rem;font-weight:bold;}
-
 .label{font-size:0.85rem;color:#666;}
-
 .right{flex:1;}
 
-/* FORECAST (werkt automatisch voor 4 kaarten) */
 .grid{
     display:grid;
     grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
     gap:12px;
 }
 
-/* RADAR */
-.radar{
-    overflow:hidden;
-    padding:0;
+/* LIVE DOT */
+.live-dot{
+  width:8px;
+  height:8px;
+  background:#22c55e;
+  border-radius:50%;
+  display:inline-block;
+  margin-left:6px;
+  animation:pulse 1.5s infinite;
 }
 
-.radar iframe{
-    width:100%;
-    height:420px;
-    border:none;
+@keyframes pulse{
+  0%{opacity:1;}
+  50%{opacity:0.3;}
+  100%{opacity:1;}
 }
 
-/* MOBILE */
 @media(max-width:700px){
-
 .current{flex-direction:column;}
-
-.left{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:8px;
 }
-
-.left .temp,
-.left .icon-big{
-    grid-column:span 2;
-}
-
-}
-
 </style>
 </head>
 
@@ -93,7 +76,7 @@ header{
 
 <header>
 🇳🇴 Værmelding<br>
-<small>v30 – 4 dagers prognose</small>
+<small>Live værdata</small>
 </header>
 
 <div class="wrapper">
@@ -104,20 +87,9 @@ header{
 <h4>Værprognose</h4>
 <div id="forecast" class="grid"></div>
 
-<h4>Historisk vær</h4>
-<div class="card">
-<canvas id="historyChart"></canvas>
-</div>
-
-<h4>Radar</h4>
-<div class="card radar">
-<iframe src="https://embed.windy.com/embed2.html?lat=58.79&lon=8.79&zoom=12&overlay=radar"></iframe>
-</div>
-
 </div>
 
 <script>
-
 Chart.defaults.devicePixelRatio = 2;
 
 /* ICONS */
@@ -126,66 +98,48 @@ if(code===0)return"☀️";
 if(code<=2)return"🌤️";
 if(code===3)return"☁️";
 if(code>=45&&code<=48)return"🌫️";
-if(code>=51&&code<=57)return"🌦️";
 if(code>=61&&code<=67)return"🌧️";
-if(code>=71&&code<=77)return"❄️";
-if(code>=80&&code<=82)return"🌦️";
+if(code>=71)return"❄️";
 if(code>=95)return"⛈️";
 return"🌥️";
 }
 
-const url=`https://api.open-meteo.com/v1/forecast?latitude=58.79&longitude=8.79&hourly=temperature_2m&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max&timezone=Europe%2FOslo`;
+const url = `https://api.open-meteo.com/v1/forecast?latitude=58.79&longitude=8.79&hourly=temperature_2m,relative_humidity_2m,windspeed_10m,surface_pressure&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Europe%2FOslo`;
 
 async function loadWeather(){
-
-const cache=localStorage.getItem("weather");
-if(cache) return JSON.parse(cache);
-
-try{
-const res=await fetch(url);
-if(!res.ok) throw new Error();
-const data=await res.json();
-localStorage.setItem("weather",JSON.stringify(data));
-return data;
-
-}catch{
-return{
-hourly:{temperature_2m:Array(24).fill(10),time:Array(24).fill(new Date())},
-daily:{
-weathercode:[1,2,3,2],
-temperature_2m_max:[15,18,17,16],
-temperature_2m_min:[8,9,7,6],
-precipitation_sum:[0,3,5,2],
-windspeed_10m_max:[3,5,6,4],
-uv_index_max:[2,3,4,3],
-time:[
-new Date(),
-new Date(Date.now()+86400000),
-new Date(Date.now()+172800000),
-new Date(Date.now()+259200000)
-]
-}
-};
-}
+const res = await fetch(url);
+return await res.json();
 }
 
 async function init(){
 
-const data=await loadWeather();
-const now=new Date().getHours();
-const temp=data.hourly.temperature_2m[now];
+const data = await loadWeather();
+const now = new Date().getHours();
 
+const temp = data.hourly.temperature_2m[now];
+const humidity = data.hourly.relative_humidity_2m[now];
+const wind = data.hourly.windspeed_10m[now];
+const pressure = data.hourly.surface_pressure[now];
+
+const updated = new Date().toLocaleTimeString("no-NO");
+
+/* CURRENT */
 document.getElementById("current").innerHTML=`
 <div class="card current">
 
 <div class="left">
-<div>Nu</div>
+<div>
+Nu <span class="live-dot"></span>
+</div>
+
+<div class="label">Oppdatert: ${updated}</div>
+
 <div class="icon-big">${getWeatherIcon(data.daily.weathercode[0])}</div>
 <div class="temp">${Math.round(temp)}°C</div>
 
-<div class="label">💧 ~60%</div>
-<div class="label">💨 3 m/s</div>
-<div class="label">📊 1012 hPa</div>
+<div class="label">💧 ${humidity}%</div>
+<div class="label">💨 ${wind} m/s</div>
+<div class="label">📊 ${pressure} hPa</div>
 </div>
 
 <div class="right">
@@ -203,125 +157,38 @@ datasets:[{
 data:data.hourly.temperature_2m.slice(now,now+12),
 borderColor:"#f97316",
 borderWidth:3,
-pointRadius:4,
 tension:0.4,
 fill:true
 }]
 },
 options:{
-responsive:true,
-maintainAspectRatio:false,
 plugins:{legend:{display:false}},
 scales:{x:{grid:{display:false}},y:{display:false}}
 }
 });
 
-/* ✅ FORECAST 4 DAGEN */
+/* FORECAST */
 let html="";
 for(let i=1;i<=4;i++){
-
 html+=`
 <div class="card">
-
 <b>${new Date(data.daily.time[i]).toLocaleDateString("no-NO",{weekday:"long"})}</b>
-
 <div style="font-size:1.5rem;">
 ${getWeatherIcon(data.daily.weathercode[i])}
 </div>
-
 <div>
 ${Math.round(data.daily.temperature_2m_max[i])}° / ${Math.round(data.daily.temperature_2m_min[i])}°
 </div>
-
-<div class="label">
-🌧️ ${data.daily.precipitation_sum[i]} mm<br>
-💨 ${data.daily.windspeed_10m_max[i]} m/s<br>
-UV ${data.daily.uv_index_max[i]}
-</div>
-
 </div>`;
 }
-
 document.getElementById("forecast").innerHTML = html;
 
 }
 
-/* HISTORY MET DAG MARKER */
-async function history(){
-
-try{
-const r=await fetch("public/history.json");
-const h=await r.json();
-
-const today=new Date();
-
-const index=h.daily.time.findIndex(d=>{
-const dt=new Date(d);
-return dt.getDate()===today.getDate() &&
-       dt.getMonth()===today.getMonth();
-});
-
-new Chart(document.getElementById("historyChart"),{
-
-data:{
-labels:h.daily.time.map(d=>
-new Date(d).toLocaleDateString("no-NO",{day:"numeric",month:"short"})
-),
-datasets:[
-{
-type:"line",
-data:h.daily.temperature_2m_mean,
-borderColor:"#ef4444",
-borderWidth:2,
-tension:0.4,
-pointRadius:0
-},
-{
-type:"bar",
-data:h.daily.precipitation_sum,
-backgroundColor:"rgba(59,130,246,0.25)"
-}
-]
-},
-
-options:{
-plugins:{legend:{display:false}},
-scales:{x:{grid:{display:false}}}
-},
-
-plugins:[{
-afterDraw(chart){
-
-if(index===-1) return;
-
-const {ctx,chartArea:{top,bottom},scales:{x}}=chart;
-const xPos=x.getPixelForValue(index);
-
-ctx.fillStyle="rgba(249,115,22,0.12)";
-ctx.fillRect(xPos-12,top,24,bottom-top);
-
-ctx.beginPath();
-ctx.moveTo(xPos,top);
-ctx.lineTo(xPos,bottom);
-ctx.strokeStyle="#f97316";
-ctx.stroke();
-
-ctx.fillStyle="#f97316";
-ctx.textAlign="center";
-ctx.fillText("i dag",xPos,top-5);
-}
-}]
-});
-
-}catch{
-console.warn("history niet geladen");
-}
-
-}
+/* AUTO REFRESH elke 10 min */
+setInterval(init, 10 * 60 * 1000);
 
 init();
-history();
-
 </script>
 
 </body>
